@@ -1,0 +1,224 @@
+﻿<Window x:Class="TrendChartApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:TrendChartApp"
+        xmlns:s="http://schemas.abtsoftware.co.uk/SciChart"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        TextElement.FontWeight="Regular"
+        TextElement.FontSize="13"
+        TextOptions.TextFormattingMode="Ideal"
+        TextOptions.TextRenderingMode="Auto"
+        Background="{StaticResource BackgroundBrush}"
+        FontFamily="{materialDesign:MaterialDesignFont}"
+        materialDesign:ThemeAssist.Theme="Dark"
+        mc:Ignorable="d"
+        Title="New TrendDisplay" Height="700" Width="1300"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Menu Bar -->
+        <Menu x:Name="mainMenu" Grid.Row="0" Visibility="Visible">
+            <MenuItem Header="檔案">
+                <MenuItem Background="#252526" Header="匯出趨勢圖成圖片檔" Click="ExportChartImage"/>
+                <MenuItem Header="匯出趨勢資料成CSV檔案" Click="ExportTrendData"/>
+                <MenuItem Header="離開" Click="ExitApplication"/>
+            </MenuItem>
+            <MenuItem Header="趨勢圖">
+                <MenuItem Header="選擇標籤" Click="OpenTagSelectionWindow"/>
+                <MenuItem Header="更新趨勢圖" Click="UpdateChart"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- Controls Panel -->
+        <Grid Grid.Row="1" Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0" Text="開始時間:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,5,0">
+                <DatePicker x:Name="startDatePicker" SelectedDate="{Binding StartDate, Mode=TwoWay}" 
+                           Width="120"
+                           Style="{StaticResource MaterialDesignDatePicker}"
+                           materialDesign:HintAssist.Hint="選擇日期"
+                           Background="{StaticResource ControlBrush}"
+                           Foreground="{StaticResource ForegroundBrush}"/>
+                <TextBox x:Name="startTimeTextBox" Text="{Binding StartTimeText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                Style="{StaticResource MaterialDesignTextBox}"
+                Width="80" 
+                ToolTip="格式: HH:mm:ss" 
+                Margin="5,0,0,0"
+                materialDesign:HintAssist.Hint="時間"
+                Background="{StaticResource ControlBrush}"
+                Foreground="{StaticResource ForegroundBrush}"/>
+            </StackPanel>
+
+            <TextBlock Grid.Column="2" Text="結束時間:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="0,0,5,0">
+                <DatePicker x:Name="endDatePicker" SelectedDate="{Binding EndDate, Mode=TwoWay}" 
+                               Width="120"
+                               Style="{StaticResource MaterialDesignDatePicker}"
+                               materialDesign:HintAssist.Hint="選擇日期"
+                               Background="{StaticResource ControlBrush}"
+                               Foreground="{StaticResource ForegroundBrush}"/>
+                <TextBox x:Name="endTimeTextBox" Text="{Binding EndTimeText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                Style="{StaticResource MaterialDesignTextBox}"
+                Width="80" 
+                ToolTip="格式: HH:mm:ss" 
+                Margin="5,0,0,0"
+                materialDesign:HintAssist.Hint="時間"
+                Background="{StaticResource ControlBrush}"
+                Foreground="{StaticResource ForegroundBrush}"/>
+            </StackPanel>
+
+            <TextBlock Grid.Column="4" Text="Y軸最小值:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <TextBox x:Name="yMinTextBox" Grid.Column="5" 
+                     Text="{Binding YAxisMin, Mode=TwoWay}" 
+                     Margin="0,0,5,0"
+                     Style="{StaticResource MaterialDesignTextBox}"
+                     materialDesign:HintAssist.Hint="Y軸最小值"
+                     Background="{StaticResource ControlBrush}"
+                     Foreground="{StaticResource ForegroundBrush}"/>
+
+            <TextBlock Grid.Column="6" Text="Y軸最大值:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <TextBox x:Name="yMaxTextBox" Grid.Column="7" 
+                     Text="{Binding YAxisMax, Mode=TwoWay}" 
+                     Margin="0,0,5,0"
+                     Style="{StaticResource MaterialDesignTextBox}"
+                     materialDesign:HintAssist.Hint="Y軸最大值"
+                     Background="{StaticResource ControlBrush}"
+                     Foreground="{StaticResource ForegroundBrush}"/>
+
+            <Button x:Name="updateButton" Grid.Column="8" 
+                    Content="更新趨勢圖" 
+                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    Padding="10,5" 
+                    Click="UpdateChart"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="{StaticResource ForegroundBrush}"/>
+
+            <Button x:Name="resetZoomButton" Grid.Column="9" 
+                    Content="重置縮放" 
+                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    Padding="10,5" 
+                    Click="ResetZoom"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="{StaticResource ForegroundBrush}"
+                    Margin="10,0,0,0"/>
+        </Grid>
+
+        <!-- Chart Area - 使用SciChart替換LiveCharts -->
+        <Grid Grid.Row="2" Margin="10">
+            <s:SciChartSurface x:Name="sciChartSurface" Background="{StaticResource PanelBrush}">
+
+                <!-- 定義SciChart圖表 -->
+                <s:SciChartSurface.RenderableSeries>
+                    <!-- 資料系列將在程式碼中動態添加 -->
+                </s:SciChartSurface.RenderableSeries>
+
+                <!-- X軸設定 - 使用日期時間軸 -->
+                <s:SciChartSurface.XAxes>
+                    <s:DateTimeAxis x:Name="xAxis"
+                                   DrawMajorBands="False"
+                                   AxisTitle="時間"
+                                   TextFormatting="{Binding DateTimeFormatter}"
+                                   VisibleRange="{Binding VisibleRange, Mode=TwoWay}"
+                                   AutoRange="Never"
+                                   Foreground="{StaticResource ForegroundBrush}"
+                                   AxisTitleStyle="{StaticResource MaterialDesignTextBlockFontText}"
+                                   TitlePadding="10"/>
+                </s:SciChartSurface.XAxes>
+
+                <!-- Y軸設定 -->
+                <s:SciChartSurface.YAxes>
+                    <s:NumericAxis x:Name="yAxis"
+                                  AxisTitle="數值" 
+                                  VisibleRange="{Binding YAxisRange, Mode=TwoWay}"
+                                  AutoRange="Never"
+                                  Foreground="{StaticResource ForegroundBrush}"
+                                  AxisTitleStyle="{StaticResource MaterialDesignTextBlockFontText}"
+                                  TitlePadding="10"/>
+                </s:SciChartSurface.YAxes>
+
+                <!-- 互動功能 - 更新到SciChart v8 API -->
+                <s:SciChartSurface.ChartModifier>
+                    <s:ModifierGroup>
+                        <s:RubberBandXyZoomModifier IsXAxisOnly="True" ExecuteOn="MouseLeftButton" ZoomExtentsY="False"/>
+                        <s:ZoomPanModifier ExecuteOn="MouseRightButton" ClipModeX="None"/>
+                        <s:ZoomExtentsModifier ExecuteOn="MouseDoubleClick" />
+                        <s:MouseWheelZoomModifier />
+                        <s:CursorModifier x:Name="cursorModifier" 
+                                         ShowTooltip="True"
+                                         ShowAxisLabels="True"
+                                         SourceMode="AllSeries"/>
+                    </s:ModifierGroup>
+                </s:SciChartSurface.ChartModifier>
+
+                <!-- 圖例 -->
+                <s:SciChartSurface.ChartLegend>
+                    <s:LegendModifier x:Name="chartLegend" 
+                                     Orientation="Vertical"
+                                     Placement="Right"
+                                     LegendBackgroundBrush="{StaticResource PanelBrush}"
+                                     LegendTextColor="{StaticResource ForegroundBrush}"/>
+                </s:SciChartSurface.ChartLegend>
+
+            </s:SciChartSurface>
+
+            <!-- 縮放指示器 -->
+            <Border x:Name="zoomingIndicator" 
+                    Panel.ZIndex="1000"
+                    Background="#80000000" 
+                    CornerRadius="4"
+                    HorizontalAlignment="Center" 
+                    VerticalAlignment="Center" 
+                    Padding="20"
+                    Visibility="Collapsed">
+                <StackPanel Orientation="Vertical">
+                    <TextBlock Text="縮放中..." 
+                              Foreground="{StaticResource ForegroundBrush}" 
+                              HorizontalAlignment="Center" 
+                              Margin="0,0,0,10"/>
+                    <ProgressBar IsIndeterminate="True" 
+                                Width="150" 
+                                Height="5" 
+                                Background="{StaticResource ControlBrush}" 
+                                Foreground="{StaticResource AccentBrush}"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- 加載覆蓋層 -->
+        <Grid x:Name="loadingOverlay" Visibility="Collapsed" Panel.ZIndex="9999">
+            <Rectangle Fill="#80000000" Width="{Binding ActualWidth, RelativeSource={RelativeSource FindAncestor, AncestorType=Window}}" 
+                       Height="{Binding ActualHeight, RelativeSource={RelativeSource FindAncestor, AncestorType=Window}}"/>
+            <Border Background="#CC333333" CornerRadius="8" Width="220" Height="100" 
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <TextBlock x:Name="loadingTextBlock" Text="處理中..." FontSize="16" Foreground="White" 
+                               HorizontalAlignment="Center" Margin="0,0,0,15"/>
+                    <ProgressBar IsIndeterminate="True" Width="180" Height="6" 
+                                 Background="#444444" Foreground="{StaticResource AccentBrush}"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

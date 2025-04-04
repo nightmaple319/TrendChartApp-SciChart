@@ -1,0 +1,113 @@
+﻿<Window x:Class="TrendChartApp.Views.TagSelectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:TrendChartApp.Views"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        TextElement.FontWeight="Regular"
+        TextElement.FontSize="13"
+        TextOptions.TextFormattingMode="Ideal"
+        TextOptions.TextRenderingMode="Auto"
+        Background="{StaticResource BackgroundBrush}"
+        FontFamily="{materialDesign:MaterialDesignFont}"
+        materialDesign:ThemeAssist.Theme="Dark"
+        mc:Ignorable="d"
+        Title="選擇標籤" Height="500" Width="800" WindowStartupLocation="CenterOwner">
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- 標題和篩選區域 -->
+        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,5,10">
+            <TextBlock Text="可用標籤列表" FontWeight="Bold" Margin="0,0,0,5"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="篩選:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <TextBox Grid.Column="1" x:Name="filterTextBox" TextChanged="FilterTextChanged"
+                         Style="{StaticResource MaterialDesignTextBox}"
+                         materialDesign:HintAssist.Hint="輸入關鍵字篩選"
+                         Background="{StaticResource ControlBrush}"
+                         Foreground="{StaticResource ControlForegroundBrush}"
+                         BorderBrush="{StaticResource BorderBrush}"
+                         Margin="0,0,0,5"/>
+            </Grid>
+        </StackPanel>
+
+        <!-- 已選標籤標題 -->
+        <TextBlock Grid.Row="0" Grid.Column="1" Text="已選標籤 (最多8個)" 
+                   FontWeight="Bold" Margin="5,0,0,10"/>
+
+        <!-- 可用標籤列表 -->
+        <ListView Grid.Row="1" Grid.Column="0" x:Name="tagsListView" 
+                  Margin="0,0,5,0"
+                  Background="{StaticResource ControlBrush}"
+                  BorderBrush="{StaticResource BorderBrush}">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Width="40">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" 
+                                          Click="SelectTag"
+                                          Background="{StaticResource ControlBrush}"
+                                          Foreground="{StaticResource ControlForegroundBrush}"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="Index" DisplayMemberBinding="{Binding Index}" Width="60"/>
+                    <GridViewColumn Header="TAG No" DisplayMemberBinding="{Binding TagNo}" Width="100"/>
+                    <GridViewColumn Header="TAG Name" DisplayMemberBinding="{Binding TagName}" Width="200"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <!-- 已選標籤列表 -->
+        <ListView Grid.Row="1" Grid.Column="1" x:Name="selectedTagsListView" 
+                  Margin="5,0,0,0"
+                  Background="{StaticResource ControlBrush}"
+                  BorderBrush="{StaticResource BorderBrush}">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Index" DisplayMemberBinding="{Binding Index}" Width="60"/>
+                    <GridViewColumn Header="TAG No" DisplayMemberBinding="{Binding TagNo}" Width="100"/>
+                    <GridViewColumn Header="TAG Name" DisplayMemberBinding="{Binding TagName}" Width="200"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <!-- 說明文本 -->
+        <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" 
+                   Text="說明: 勾選左側列表中的標籤將其加入右側已選標籤列表，取消勾選則從已選標籤中移除。"
+                   Margin="0,10,0,10" TextWrapping="Wrap"/>
+
+        <!-- 按鈕區域 -->
+        <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" 
+                    Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="確定" 
+                    Style="{StaticResource MaterialDesignRaisedButton}" 
+                    Width="80" Height="30" 
+                    Margin="0,0,10,0" 
+                    Click="OkButton_Click"
+                    Background="{StaticResource AccentBrush}"/>
+            <Button Content="取消" 
+                    Style="{StaticResource MaterialDesignRaisedButton}" 
+                    Width="80" Height="30" 
+                    Click="CancelButton_Click"
+                    Background="{StaticResource ControlBrush}"/>
+        </StackPanel>
+    </Grid>
+</Window>
