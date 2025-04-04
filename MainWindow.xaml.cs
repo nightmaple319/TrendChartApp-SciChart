@@ -15,10 +15,12 @@ using TrendChartApp.Models;
 using TrendChartApp.Helpers;
 using TrendChartApp.Views;
 using System.Windows.Threading;
+using SciChart.Core.Framework;
 using SciChart.Charting.Model.DataSeries;
 using SciChart.Charting.Visuals.RenderableSeries;
 using SciChart.Charting.Visuals.Axes;
 using SciChart.Data.Model;
+using SciChart.Drawing.Common;
 using SciChart.Charting.Visuals.PointMarkers;
 using SciChart.Charting.Visuals;
 
@@ -47,8 +49,8 @@ namespace TrendChartApp
         }
 
         // SciChart系列集合
-        private ObservableCollection<BaseRenderableSeries> _renderableSeries;
-        public ObservableCollection<BaseRenderableSeries> RenderableSeries
+        private ObservableCollection<IRenderableSeries> _renderableSeries;
+        public ObservableCollection<IRenderableSeries> RenderableSeries
         {
             get => _renderableSeries;
             set
@@ -225,7 +227,7 @@ namespace TrendChartApp
             _dbHelper = new DatabaseHelper(AppConfig.ConnectionString);
 
             // 初始化集合
-            _renderableSeries = new ObservableCollection<BaseRenderableSeries>();
+            _renderableSeries = new ObservableCollection<IRenderableSeries>();
             _selectedTags = new ObservableCollection<TagInfo>();
             _dataSeries = new Dictionary<int, IXyDataSeries<DateTime, double>>();
 
@@ -240,9 +242,6 @@ namespace TrendChartApp
             // 初始化縮放計時器
             _zoomTimer.Interval = TimeSpan.FromMilliseconds(500);
             _zoomTimer.Tick += ZoomTimer_Tick;
-
-            // 設置渲染系列
-            sciChartSurface.RenderableSeries = _renderableSeries;
 
             // 設置資料上下文
             DataContext = this;
@@ -571,6 +570,7 @@ namespace TrendChartApp
         /// </summary>
         private void ClearExistingSeries()
         {
+            sciChartSurface.RenderableSeries.Clear();
             _renderableSeries.Clear();
             _dataSeries.Clear();
         }
@@ -608,22 +608,23 @@ namespace TrendChartApp
             var seriesColor = AppConfig.ChartColors[colorIndex];
 
             // 創建線條樣式及粗細
-            var lineStyle = new SciChart.Drawing.Common.PenStyle(
-                SciChart.Drawing.Common.Color.FromArgb(
+            // 注意：使用 SciChart 8.x 版本的 PenStyle API 可能與原始代碼不同
+            var penStyle = new PenStyle(
+                ColorUtil.FromArgb(
                     seriesColor.A,
                     seriesColor.R,
                     seriesColor.G,
                     seriesColor.B
                 ),
                 2.0f,
-                SciChart.Drawing.Common.LineStyle.Solid
+                LineStyle.Solid
             );
 
             // 創建FastLineRenderableSeries
             var renderableSeries = new FastLineRenderableSeries
             {
                 DataSeries = dataSeries,
-                StrokeStyle = lineStyle,
+                Stroke = penStyle,
                 AntiAliasing = true,
                 PointMarker = new EllipsePointMarker
                 {
@@ -636,6 +637,7 @@ namespace TrendChartApp
 
             // 添加到渲染系列集合
             _renderableSeries.Add(renderableSeries);
+            sciChartSurface.RenderableSeries.Add(renderableSeries);
         }
 
         /// <summary>
