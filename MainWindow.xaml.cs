@@ -757,11 +757,14 @@ namespace TrendChartApp
             int colorIndex = _renderableSeries.Count % AppConfig.ChartColors.Count;
             var seriesColor = AppConfig.ChartColors[colorIndex];
 
+            // 轉換顏色為uint
+            uint sciChartColor = seriesColor.ToSciChartColor();
+
             // 創建 FastLineRenderableSeries
             var lineSeries = new FastLineRenderableSeries
             {
                 DataSeries = dataSeries,
-                Stroke = seriesColor.ToSciChartColor(), // 使用新的ToSciChartColor擴展方法
+                Stroke = sciChartColor,
                 StrokeThickness = 2,
                 AntiAliasing = true
             };
@@ -771,8 +774,8 @@ namespace TrendChartApp
             {
                 Width = 5,
                 Height = 5,
-                Fill = seriesColor.ToSciChartColor(), // 使用新的ToSciChartColor擴展方法
-                Stroke = seriesColor.ToSciChartColor() // 使用新的ToSciChartColor擴展方法
+                Fill = sciChartColor,
+                Stroke = sciChartColor
             };
             lineSeries.PointMarker = pointMarker;
 
