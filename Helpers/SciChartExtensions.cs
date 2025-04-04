@@ -1,5 +1,4 @@
 ﻿using System.Windows.Media;
-using SciChart.Drawing.Common;
 
 namespace TrendChartApp.Helpers
 {
@@ -8,22 +7,23 @@ namespace TrendChartApp.Helpers
     /// </summary>
     public static class SciChartExtensions
     {
-        /// <summary>
+        // <summary>
         /// 將WPF顏色轉換為SciChart顏色
         /// </summary>
-        public static SciChart.Drawing.Common.Color ToColor(this System.Windows.Media.Color wpfColor)
+        public static SciChart.Core.Utility.ColorUtil.Color ToSciChartColor(this System.Windows.Media.Color wpfColor)
         {
-            // 使用正確的 SciChart 顏色建立方式
-            return SciChart.Drawing.Common.Color.FromArgb(wpfColor.A, wpfColor.R, wpfColor.G, wpfColor.B);
+            // 使用SciChart的ColorUtil.Color類型
+            return new SciChart.Core.Utility.ColorUtil.Color(wpfColor.A, wpfColor.R, wpfColor.G, wpfColor.B);
         }
 
         /// <summary>
         /// 將SolidColorBrush轉換為SciChart顏色
         /// </summary>
-        public static SciChart.Drawing.Common.Color ToColor(this SolidColorBrush brush)
+        public static SciChart.Core.Utility.ColorUtil.Color ToSciChartColor(this SolidColorBrush brush)
         {
-            // 使用正確的 SciChart 顏色建立方式
-            return SciChart.Drawing.Common.Color.FromArgb(brush.Color.A, brush.Color.R, brush.Color.G, brush.Color.B);
+            var wpfColor = brush.Color;
+            // 使用SciChart的ColorUtil.Color類型
+            return new SciChart.Core.Utility.ColorUtil.Color(wpfColor.A, wpfColor.R, wpfColor.G, wpfColor.B);
         }
     }
 }

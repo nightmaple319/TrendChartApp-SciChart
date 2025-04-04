@@ -761,8 +761,8 @@ namespace TrendChartApp
             var lineSeries = new FastLineRenderableSeries
             {
                 DataSeries = dataSeries,
-                Stroke = seriesColor.ToColor(), // 使用 ToColor 擴展方法或直接使用顏色
-                StrokeThickness = 2, // 使用整數值
+                Stroke = seriesColor.ToSciChartColor(), // 使用新的ToSciChartColor擴展方法
+                StrokeThickness = 2,
                 AntiAliasing = true
             };
 
@@ -771,8 +771,8 @@ namespace TrendChartApp
             {
                 Width = 5,
                 Height = 5,
-                Fill = seriesColor.ToColor(), // 使用 ToColor 擴展方法
-                Stroke = seriesColor.ToColor() // 使用 ToColor 擴展方法
+                Fill = seriesColor.ToSciChartColor(), // 使用新的ToSciChartColor擴展方法
+                Stroke = seriesColor.ToSciChartColor() // 使用新的ToSciChartColor擴展方法
             };
             lineSeries.PointMarker = pointMarker;
 
