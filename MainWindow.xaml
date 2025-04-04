@@ -4,8 +4,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TrendChartApp"
-        xmlns:s="http://schemas.abtsoftware.co.uk/SciChart"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:s="http://schemas.abtsoftware.co.uk/scichart"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         TextElement.FontWeight="Regular"
         TextElement.FontSize="13"
@@ -127,52 +127,8 @@
 
         <!-- Chart Area - 使用SciChart -->
         <Grid Grid.Row="2" Margin="10">
-            <s:SciChartSurface x:Name="sciChartSurface" Background="{StaticResource PanelBrush}">
-                <!-- X軸設定 - 使用日期時間軸 -->
-                <s:SciChartSurface.XAxis>
-                    <s:DateTimeAxis x:Name="xAxis"
-                                   DrawMajorBands="False"
-                                   AxisTitle="時間"
-                                   TextFormatting="{Binding DateTimeFormatter}"
-                                   VisibleRange="{Binding VisibleRange, Mode=TwoWay}"
-                                   AutoRange="Never"
-                                   AxisTitleStyle="{StaticResource MaterialDesignTextBlockFontText}"
-                                   TitlePadding="10"/>
-                </s:SciChartSurface.XAxis>
-
-                <!-- Y軸設定 -->
-                <s:SciChartSurface.YAxis>
-                    <s:NumericAxis x:Name="yAxis"
-                                  AxisTitle="數值" 
-                                  VisibleRange="{Binding YAxisRange, Mode=TwoWay}"
-                                  AutoRange="Never"
-                                  AxisTitleStyle="{StaticResource MaterialDesignTextBlockFontText}"
-                                  TitlePadding="10"/>
-                </s:SciChartSurface.YAxis>
-
-                <!-- 互動功能 -->
-                <s:SciChartSurface.ChartModifier>
-                    <s:ModifierGroup>
-                        <s:RubberBandXyZoomModifier IsXAxisOnly="True" ExecuteOn="MouseLeftButton" ZoomExtentsY="False"/>
-                        <s:ZoomPanModifier ExecuteOn="MouseRightButton" ClipModeX="None"/>
-                        <s:ZoomExtentsModifier ExecuteOn="MouseDoubleClick" />
-                        <s:MouseWheelZoomModifier />
-                        <s:CursorModifier x:Name="cursorModifier" 
-                                         ShowTooltip="True"
-                                         ShowAxisLabels="True"
-                                         SourceMode="AllSeries"/>
-                    </s:ModifierGroup>
-                </s:SciChartSurface.ChartModifier>
-
-                <!-- 圖例 -->
-                <s:SciChartSurface.Legend>
-                    <s:LegendModifier x:Name="chartLegend" 
-                                     Orientation="Vertical"
-                                     Placement="Right"
-                                     Background="{StaticResource PanelBrush}"
-                                     Foreground="{StaticResource ForegroundBrush}"/>
-                </s:SciChartSurface.Legend>
-            </s:SciChartSurface>
+            <!-- 使用ContentControl作為SciChart容器，將在代碼中創建並填充 -->
+            <ContentControl x:Name="chartContainer" Background="{StaticResource PanelBrush}"/>
 
             <!-- 縮放指示器 -->
             <Border x:Name="zoomingIndicator" 

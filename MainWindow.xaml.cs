@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
@@ -15,14 +16,17 @@ using TrendChartApp.Models;
 using TrendChartApp.Helpers;
 using TrendChartApp.Views;
 using System.Windows.Threading;
-using SciChart.Core.Framework;
 using SciChart.Charting.Model.DataSeries;
 using SciChart.Charting.Visuals.RenderableSeries;
 using SciChart.Charting.Visuals.Axes;
 using SciChart.Data.Model;
-using SciChart.Drawing.Common;
-using SciChart.Charting.Visuals.PointMarkers;
 using SciChart.Charting.Visuals;
+using SciChart.Charting.ChartModifiers;
+using SciChart.Charting.Visuals.PointMarkers;
+using SciChart.Core.Extensions;
+using SciChart.Drawing.VisualXcceleratorRasterizer;
+using SciChart.Charting;
+using SciChart.Drawing.Common;
 
 namespace TrendChartApp
 {
@@ -35,6 +39,9 @@ namespace TrendChartApp
 
         // Database helper
         private readonly DatabaseHelper _dbHelper;
+
+        // SciChart Surface
+        private SciChartSurface _sciChartSurface;
 
         // Selected tags for charting
         private ObservableCollection<TagInfo> _selectedTags;
@@ -49,8 +56,8 @@ namespace TrendChartApp
         }
 
         // SciChart系列集合
-        private ObservableCollection<IRenderableSeries> _renderableSeries;
-        public ObservableCollection<IRenderableSeries> RenderableSeries
+        private ObservableCollection<BaseRenderableSeries> _renderableSeries;
+        public ObservableCollection<BaseRenderableSeries> RenderableSeries
         {
             get => _renderableSeries;
             set
@@ -227,7 +234,7 @@ namespace TrendChartApp
             _dbHelper = new DatabaseHelper(AppConfig.ConnectionString);
 
             // 初始化集合
-            _renderableSeries = new ObservableCollection<IRenderableSeries>();
+            _renderableSeries = new ObservableCollection<BaseRenderableSeries>();
             _selectedTags = new ObservableCollection<TagInfo>();
             _dataSeries = new Dictionary<int, IXyDataSeries<DateTime, double>>();
 
@@ -248,6 +255,9 @@ namespace TrendChartApp
 
             // 設置日期時間格式
             SetDateTimeFormatter(TimeSpan.FromHours(1));
+
+            // 初始化 SciChart
+            InitializeSciChart();
         }
 
         /// <summary>
@@ -270,6 +280,118 @@ namespace TrendChartApp
 
             // 設置可見範圍
             VisibleRange = new DateRange(StartTime, EndTime);
+        }
+
+        /// <summary>
+        /// 初始化 SciChart 控件
+        /// </summary>
+        private void InitializeSciChart()
+        {
+            // 創建新的 SciChartSurface
+            _sciChartSurface = new SciChartSurface();
+
+            // 創建X軸 (DateTimeAxis)
+            var xAxis = new DateTimeAxis
+            {
+                AxisTitle = "時間",
+                TextFormatting = DateTimeFormatter,
+                DrawMajorBands = false,
+                AutoRange = AutoRange.Never,
+                TitlePadding = 10,
+                Foreground = new SolidColorBrush(Colors.White)
+            };
+
+            // 繫結 VisibleRange
+            var xAxisBinding = new Binding("VisibleRange")
+            {
+                Source = this,
+                Mode = BindingMode.TwoWay
+            };
+            xAxis.SetBinding(DateTimeAxis.VisibleRangeProperty, xAxisBinding);
+
+            // 繫結 TextFormatting
+            var formatterBinding = new Binding("DateTimeFormatter")
+            {
+                Source = this,
+                Mode = BindingMode.OneWay
+            };
+            xAxis.SetBinding(DateTimeAxis.TextFormattingProperty, formatterBinding);
+
+            // 創建Y軸 (NumericAxis)
+            var yAxis = new NumericAxis
+            {
+                AxisTitle = "數值",
+                AutoRange = AutoRange.Never,
+                TitlePadding = 10,
+                Foreground = new SolidColorBrush(Colors.White)
+            };
+
+            // 繫結 VisibleRange
+            var yAxisBinding = new Binding("YAxisRange")
+            {
+                Source = this,
+                Mode = BindingMode.TwoWay
+            };
+            yAxis.SetBinding(NumericAxis.VisibleRangeProperty, yAxisBinding);
+
+            // 加入軸到圖表
+            _sciChartSurface.XAxes.Add(xAxis);
+            _sciChartSurface.YAxes.Add(yAxis);
+
+            // 添加修飾器
+            var modifierGroup = new ModifierGroup();
+
+            // 添加縮放和平移功能
+            modifierGroup.ChildModifiers.Add(new RubberBandXyZoomModifier
+            {
+                IsXAxisOnly = true,
+                ExecuteOn = ExecuteOn.MouseLeftButton,
+                ZoomExtentsY = false
+            });
+
+            modifierGroup.ChildModifiers.Add(new ZoomPanModifier
+            {
+                ExecuteOn = ExecuteOn.MouseRightButton,
+                ClipModeX = ClipMode.None
+            });
+
+            modifierGroup.ChildModifiers.Add(new ZoomExtentsModifier
+            {
+                ExecuteOn = ExecuteOn.MouseDoubleClick
+            });
+
+            modifierGroup.ChildModifiers.Add(new MouseWheelZoomModifier());
+
+            // 添加遊標修飾器
+            var cursorModifier = new CursorModifier
+            {
+                ShowTooltip = true,
+                ShowAxisLabels = true,
+                SourceMode = SourceMode.AllSeries
+            };
+            modifierGroup.ChildModifiers.Add(cursorModifier);
+
+            // 添加圖例修飾器
+            var legendModifier = new LegendModifier
+            {
+                Orientation = Orientation.Vertical,
+                LegendPlacement = LegendPlacement.Right,
+                ShowLegend = true
+            };
+            modifierGroup.ChildModifiers.Add(legendModifier);
+
+            // 應用修飾器到圖表
+            _sciChartSurface.ChartModifier = modifierGroup;
+
+            // 設置背景色
+            _sciChartSurface.Background = (SolidColorBrush)FindResource("PanelBrush");
+
+            // 使用高性能渲染器
+            _sciChartSurface.RenderableSeries = new ObservableCollection<IRenderableSeries>();
+            _sciChartSurface.UseRenderSurface = RenderSurface.VisualXcceleratorRenderSurface;
+
+            // 將圖表添加到容器
+            chartContainer.Content = _sciChartSurface;
         }
 
         #endregion
@@ -369,7 +491,7 @@ namespace TrendChartApp
             {
                 try
                 {
-                    Utils.SaveElementAsImage(sciChartSurface, saveFileDialog.FileName);
+                    Utils.SaveElementAsImage(_sciChartSurface, saveFileDialog.FileName);
                     MessageBox.Show("圖片已成功保存。", "匯出成功", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 catch (Exception ex)
@@ -502,7 +624,6 @@ namespace TrendChartApp
         }
 
         #endregion
-
         #region 輔助方法
 
         /// <summary>
@@ -538,6 +659,12 @@ namespace TrendChartApp
             }
 
             OnPropertyChanged(nameof(DateTimeFormatter));
+
+            // 如果X軸已經創建，更新其格式
+            if (_sciChartSurface != null && _sciChartSurface.XAxes.Count > 0 && _sciChartSurface.XAxes[0] is DateTimeAxis dateTimeAxis)
+            {
+                dateTimeAxis.TextFormatting = DateTimeFormatter;
+            }
         }
 
         /// <summary>
@@ -570,7 +697,10 @@ namespace TrendChartApp
         /// </summary>
         private void ClearExistingSeries()
         {
-            sciChartSurface.RenderableSeries.Clear();
+            if (_sciChartSurface != null)
+            {
+                _sciChartSurface.RenderableSeries.Clear();
+            }
             _renderableSeries.Clear();
             _dataSeries.Clear();
         }
@@ -607,24 +737,12 @@ namespace TrendChartApp
             int colorIndex = _renderableSeries.Count % AppConfig.ChartColors.Count;
             var seriesColor = AppConfig.ChartColors[colorIndex];
 
-            // 創建線條樣式及粗細
-            // 注意：使用 SciChart 8.x 版本的 PenStyle API 可能與原始代碼不同
-            var penStyle = new PenStyle(
-                ColorUtil.FromArgb(
-                    seriesColor.A,
-                    seriesColor.R,
-                    seriesColor.G,
-                    seriesColor.B
-                ),
-                2.0f,
-                LineStyle.Solid
-            );
-
             // 創建FastLineRenderableSeries
-            var renderableSeries = new FastLineRenderableSeries
+            var lineSeries = new FastLineRenderableSeries
             {
                 DataSeries = dataSeries,
-                Stroke = penStyle,
+                SeriesColor = seriesColor,
+                StrokeThickness = 2.0,
                 AntiAliasing = true,
                 PointMarker = new EllipsePointMarker
                 {
@@ -636,8 +754,10 @@ namespace TrendChartApp
             };
 
             // 添加到渲染系列集合
-            _renderableSeries.Add(renderableSeries);
-            sciChartSurface.RenderableSeries.Add(renderableSeries);
+            _renderableSeries.Add(lineSeries);
+
+            // 添加到SciChart
+            _sciChartSurface.RenderableSeries.Add(lineSeries);
         }
 
         /// <summary>
