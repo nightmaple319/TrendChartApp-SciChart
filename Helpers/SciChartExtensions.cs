@@ -8,22 +8,22 @@ namespace TrendChartApp.Helpers
     public static class SciChartExtensions
     {
         /// <summary>
-        /// 將WPF顏色轉換為SciChart顏色
+        /// 將WPF顏色轉換為SciChart可用顏色
         /// </summary>
-        public static uint ToSciChartColor(this System.Windows.Media.Color wpfColor)
+        public static Color ToSciChartColor(this Color wpfColor)
         {
-            // 使用 SciChart 8.7 的顏色表示方式（ARGB uint）
-            return (uint)((wpfColor.A << 24) | (wpfColor.R << 16) | (wpfColor.G << 8) | wpfColor.B);
+            // 在SciChart 8.7中，可以直接使用WPF的Color對象
+            // 這個方法只是為了保持代碼的一致性
+            return wpfColor;
         }
 
         /// <summary>
-        /// 將SolidColorBrush轉換為SciChart顏色
+        /// 將SolidColorBrush轉換為SciChart可用顏色
         /// </summary>
-        public static uint ToSciChartColor(this SolidColorBrush brush)
+        public static Color ToSciChartColor(this SolidColorBrush brush)
         {
-            var wpfColor = brush.Color;
-            // 使用 SciChart 8.7 的顏色表示方式（ARGB uint）
-            return (uint)((wpfColor.A << 24) | (wpfColor.R << 16) | (wpfColor.G << 8) | wpfColor.B);
+            // 在SciChart 8.7中，可以直接使用WPF的Color對象
+            return brush.Color;
         }
     }
 }
