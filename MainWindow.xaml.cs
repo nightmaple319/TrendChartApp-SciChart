@@ -297,7 +297,10 @@ namespace TrendChartApp
                 TextFormatting = DateTimeFormatter,
                 DrawMajorBands = false,
                 AutoRange = AutoRange.Never,
-                TitlePadding = 10,
+                AxisTitleStyle = new Style(typeof(TextBlock))
+                {
+                    Setters = { new Setter(TextBlock.MarginProperty, new Thickness(0, 10, 0, 0)) }
+                },
                 Foreground = new SolidColorBrush(Colors.White)
             };
 
@@ -322,7 +325,10 @@ namespace TrendChartApp
             {
                 AxisTitle = "數值",
                 AutoRange = AutoRange.Never,
-                TitlePadding = 10,
+                AxisTitleStyle = new Style(typeof(TextBlock))
+                {
+                    Setters = { new Setter(TextBlock.MarginProperty, new Thickness(0, 10, 0, 0)) }
+                },
                 Foreground = new SolidColorBrush(Colors.White)
             };
 
@@ -388,7 +394,21 @@ namespace TrendChartApp
 
             // 使用高性能渲染器
             _sciChartSurface.RenderableSeries = new ObservableCollection<IRenderableSeries>();
-            _sciChartSurface.UseRenderSurface = RenderSurface.VisualXcceleratorRenderSurface;
+
+            // 嘗試設置渲染表面 (如果版本支持)
+            try
+            {
+                // 使用反射來設置渲染表面，以處理不同版本的API
+                var renderSurfaceProperty = typeof(SciChartSurface).GetProperty("RenderSurface");
+                if (renderSurfaceProperty != null)
+                {
+                    renderSurfaceProperty.SetValue(_sciChartSurface, 2); // 2 通常對應 DirectX 或 VisualXccelerator 
+                }
+            }
+            catch
+            {
+                // 忽略錯誤，如果不支援此功能
+            }
 
             // 將圖表添加到容器
             chartContainer.Content = _sciChartSurface;
@@ -737,21 +757,24 @@ namespace TrendChartApp
             int colorIndex = _renderableSeries.Count % AppConfig.ChartColors.Count;
             var seriesColor = AppConfig.ChartColors[colorIndex];
 
-            // 創建FastLineRenderableSeries
+            // 創建 FastLineRenderableSeries
             var lineSeries = new FastLineRenderableSeries
             {
                 DataSeries = dataSeries,
-                SeriesColor = seriesColor,
-                StrokeThickness = 2.0,
-                AntiAliasing = true,
-                PointMarker = new EllipsePointMarker
-                {
-                    Width = 5,
-                    Height = 5,
-                    Fill = new SolidColorBrush(seriesColor),
-                    Stroke = new SolidColorBrush(seriesColor)
-                }
+                Stroke = seriesColor.ToColor(), // 使用 ToColor 擴展方法或直接使用顏色
+                StrokeThickness = 2, // 使用整數值
+                AntiAliasing = true
             };
+
+            // 設置點標記
+            var pointMarker = new EllipsePointMarker
+            {
+                Width = 5,
+                Height = 5,
+                Fill = seriesColor.ToColor(), // 使用 ToColor 擴展方法
+                Stroke = seriesColor.ToColor() // 使用 ToColor 擴展方法
+            };
+            lineSeries.PointMarker = pointMarker;
 
             // 添加到渲染系列集合
             _renderableSeries.Add(lineSeries);
