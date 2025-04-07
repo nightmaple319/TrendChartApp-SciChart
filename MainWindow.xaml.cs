@@ -297,10 +297,6 @@ namespace TrendChartApp
                 TextFormatting = DateTimeFormatter,
                 DrawMajorBands = false,
                 AutoRange = AutoRange.Never,
-                TitleStyle = new Style(typeof(TextBlock))
-                {
-                    Setters = { new Setter(TextBlock.MarginProperty, new Thickness(0, 10, 0, 0)) }
-                },
                 Foreground = new SolidColorBrush(Colors.White)
             };
 
@@ -325,10 +321,6 @@ namespace TrendChartApp
             {
                 AxisTitle = "數值",
                 AutoRange = AutoRange.Never,
-                TitleStyle = new Style(typeof(TextBlock))
-                {
-                    Setters = { new Setter(TextBlock.MarginProperty, new Thickness(0, 10, 0, 0)) }
-                },
                 Foreground = new SolidColorBrush(Colors.White)
             };
 
