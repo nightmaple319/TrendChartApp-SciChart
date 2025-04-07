@@ -24,15 +24,15 @@
 
                 <ResourceDictionary>
                     <!-- 深色主題資源 -->
-                    <SolidColorBrush x:Key="BackgroundBrush" Color="#2D2D30"/>
-                    <SolidColorBrush x:Key="ForegroundBrush" Color="#E6E6E6"/>
+                    <SolidColorBrush x:Key="BackgroundBrush" Color="#1E1E1E"/>
+                    <SolidColorBrush x:Key="ForegroundBrush" Color="#FFFFFF"/>
                     <SolidColorBrush x:Key="PanelBrush" Color="#252526"/>
                     <SolidColorBrush x:Key="BorderBrush" Color="#3F3F46"/>
-                    <SolidColorBrush x:Key="AccentBrush" Color="#007ACC"/>
-                    <SolidColorBrush x:Key="ControlBrush" Color="#333337"/>
-                    <SolidColorBrush x:Key="ControlForegroundBrush" Color="#CCCCCC"/>
-                    <SolidColorBrush x:Key="HoverBrush" Color="#3E3E42"/>
-                    <SolidColorBrush x:Key="PressedBrush" Color="#007ACC"/>
+                    <SolidColorBrush x:Key="AccentBrush" Color="#0078D7"/>
+                    <SolidColorBrush x:Key="ControlBrush" Color="#2D2D30"/>
+                    <SolidColorBrush x:Key="ControlForegroundBrush" Color="#FFFFFF"/>
+                    <SolidColorBrush x:Key="HoverBrush" Color="#0078D7"/>
+                    <SolidColorBrush x:Key="PressedBrush" Color="#0066B5"/>
 
                     <!-- 全局系統顏色覆蓋，確保所有視窗元素都使用深色主題 -->
                     <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#2D2D30"/>
@@ -90,10 +90,13 @@
                         <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}"/>
                         <Style.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
+                                <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
                             </Trigger>
                             <Trigger Property="IsSubmenuOpen" Value="True">
-                                <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
+                                <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -118,11 +121,61 @@
                         <Style.Triggers>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
                             </Trigger>
                         </Style.Triggers>
+                    </Style>
+                    
+                    <!--CheckBox項樣式 -->
+                    <Style TargetType="CheckBox">
+                        <Setter Property="Foreground" Value="{StaticResource ControlForegroundBrush}"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <!-- 設定勾選標記為白色 -->
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="CheckBox">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border x:Name="checkBoxBorder" 
+                            BorderBrush="{TemplateBinding BorderBrush}" 
+                            BorderThickness="1" 
+                            Background="{TemplateBinding Background}" 
+                            Width="18" Height="18">
+                                            <Path x:Name="checkMark" 
+                              Data="M1,5 L5,9 L9,1" 
+                              Stroke="White" 
+                              StrokeThickness="2" 
+                              Visibility="Collapsed" 
+                              HorizontalAlignment="Center" 
+                              VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ContentPresenter Grid.Column="1" 
+                                      Margin="5,0,0,0" 
+                                      VerticalAlignment="Center" 
+                                      HorizontalAlignment="Left" 
+                                      RecognizesAccessKey="True"/>
+                                    </Grid>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="checkMark" Property="Visibility" Value="Visible"/>
+                                            <Setter TargetName="checkBoxBorder" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="checkBoxBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
                     </Style>
                 </ResourceDictionary>
             </ResourceDictionary.MergedDictionaries>
