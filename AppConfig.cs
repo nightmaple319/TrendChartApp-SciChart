@@ -6,7 +6,7 @@ namespace TrendChartApp
     public static class AppConfig
     {
         // Database connection string
-        public static string ConnectionString { get; set; } = "Server=127.0.0.1;Database=TrendDB_PE3;User Id=ViewDev;Password=ViewDev;";
+        public static string ConnectionString { get; set; } = "Server=127.0.0.1;Database=TrendDB;User Id=ViewDev;Password=ViewDev;";
 
         // Default chart colors
         public static List<Color> ChartColors { get; } = new List<Color>
