@@ -17,7 +17,7 @@ namespace TrendChartApp
 
             // 設置SciChart授權碼 - 更新至v8版本的授權方法
             // 注意：SciChart v8的授權可能需要使用新的API
-            string key = "/uhv+ls+c5yjshio9YKpfzFsMGdlElTmQAcHDAn4/0cUqFqHatToI+Xdzu1JP0KBMzwRGejuU+4D16XIdqgQ52hA5hr4O9wM+hl7ptPphqNxLergd+9794B5kAZzGtAaCJoRTlbriFBOfJ/LBaqm8xsScXmruFn257SVWvVwPrBoX9+9oEH1LmqmxMFdV5JgyFWFReqe8C1dMRJLl1DKoQfLzAAweIs0BSKIooF01Ov9Fh0Ml9MtVfukQnAXo2wFFXuNlwHBYBpA53/Fp+d/F7l7p76yoK+Nb930kScFwpInane/yM8juILRNbTuf9Tpslj7YuSSSpKWrRUXVKD9Dpwp2SsPXeHM96pFVb3xKWF66m/SdOO1scXZB7rbIyCUyho81jWGRLlbogoP0oqYir+O5NPgP9PT1T3GTmBQCAB2Ut4vbPtZauXG0sS9kR4uyCDFkY6Nfn/ktfe+kZMANvLLHKv09jRTa8G34EBwbL/VQ//WG+uNdB/k7TDCE1AJpJsUpQ75jdyBlqhb4Bvo/TLjaS2jn9SoG5ezoj1NGLI62PnK53CCXhhaiyvAbWAdn1zEriKD0g==";
+            string key = "XJXa4eSai1Cde/dOSh+RdrWoX6q4cbemeViJNWzAR+nthJH7QYw5t5EZKWVCfH8AqhHCaVGVbW5p1ke3F8tVWzm/c4fiYAm5rVlWy5R5obLer2a9U+bli9XAcN5OLdFUb9ZGQWxqpENAR94U+d6KR992+POYRMLfB1rwegwrjo+C6PuT7aOBy2IqXoxg1wZIOsC585Bov7uIRKtU/v25465K2P6nPsFCR7dY+tlu9UqqTTObyUjM8fUdB7DtGM88sm/8ADkzDG5jCf7HH1Q1kMRUkP0VSQF7sKIDdkdQ5kl/X9mZgZyYXm6SJfBNPPhkMmSSQ0lKnUjZOS/OhNZY9/hP3GEmzq9bufFwbXru8Qgzy7lYwIPjoF/FuGAMxuo5tUEQtWWaI7OSsxAIzMnUCgKOV8+cVX7maHeMoiCzPOFTYfDSmT9muMKE8rvj/ib9EAMCKIFtZxBRNKmEUaYfZbAcG6WEyoaN4kxAJDbFko0CHR/6bzuKvJpTKLIcZg==";
             SciChart.Charting.Visuals.SciChartSurface.SetRuntimeLicenseKey(key);
 
             // 配置MaterialDesign主題顏色
