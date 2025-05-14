@@ -150,17 +150,17 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <Border x:Name="checkBoxBorder" 
-                            BorderBrush="{TemplateBinding BorderBrush}" 
-                            BorderThickness="1" 
-                            Background="{TemplateBinding Background}" 
-                            Width="18" Height="18">
+                                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                                BorderThickness="1" 
+                                                Background="{TemplateBinding Background}" 
+                                                Width="18" Height="18">
                                             <Path x:Name="checkMark" 
-                              Data="M1,5 L5,9 L9,1" 
-                              Stroke="White" 
-                              StrokeThickness="2" 
-                              Visibility="Collapsed" 
-                              HorizontalAlignment="Center" 
-                              VerticalAlignment="Center"/>
+                                                  Data="M1,5 L5,9 L9,1" 
+                                                  Stroke="White" 
+                                                  StrokeThickness="2" 
+                                                  Visibility="Collapsed" 
+                                                  HorizontalAlignment="Center" 
+                                                  VerticalAlignment="Center"/>
                                         </Border>
                                         <ContentPresenter Grid.Column="1" 
                                       Margin="5,0,0,0" 

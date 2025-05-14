@@ -488,6 +488,33 @@ namespace TrendChartApp
         }
 
         /// <summary>
+        /// 打開資料庫連線設定視窗
+        /// </summary>
+        private void OpenDatabaseConnectionWindow(object sender, RoutedEventArgs e)
+        {
+            // 創建資料庫連線設定視窗的實例，並傳入當前的連線字串
+            var connectionWindow = new Views.DatabaseConnectionWindow(AppConfig.ConnectionString);
+            connectionWindow.Owner = this;
+
+            // 顯示視窗並等待結果
+            if (connectionWindow.ShowDialog() == true)
+            {
+                // 如果用戶按了「儲存」，則更新連線字串並重新初始化資料庫連接
+                string newConnectionString = connectionWindow.ConnectionString;
+
+                // 更新 AppConfig 中的連線字串
+                AppConfig.ConnectionString = newConnectionString;
+
+                // 重新創建資料庫助手
+                _dbHelper = new DatabaseHelper(AppConfig.ConnectionString);
+
+                // 提示用戶重新載入資料
+                MessageBox.Show("資料庫連線設定已更新。請重新載入資料以應用新的設定。",
+                                "連線設定已更新", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        /// <summary>
         /// 匯出趨勢圖為圖片
         /// </summary>
         private void ExportChartImage(object sender, RoutedEventArgs e)

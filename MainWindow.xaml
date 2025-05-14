@@ -28,8 +28,10 @@
         <!-- Menu Bar -->
         <Menu x:Name="mainMenu" Grid.Row="0" Visibility="Visible">
             <MenuItem Header="檔案">
+                <MenuItem Header="資料庫連線設定" Click="OpenDatabaseConnectionWindow"/>
                 <MenuItem Background="#252526" Header="匯出趨勢圖成圖片檔" Click="ExportChartImage"/>
                 <MenuItem Header="匯出趨勢資料成CSV檔案" Click="ExportTrendData"/>
+                <Separator/>
                 <MenuItem Header="離開" Click="ExitApplication"/>
             </MenuItem>
             <MenuItem Header="趨勢圖">
