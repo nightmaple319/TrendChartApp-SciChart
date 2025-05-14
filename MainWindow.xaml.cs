@@ -438,7 +438,7 @@ namespace TrendChartApp
             }
 
             // 顯示載入覆蓋層
-            ShowLoadingOverlay("正在載入資料...");
+            ShowLoadingOverlay("正在從資料庫載入趨勢資料，這可能需要一些時間...");
 
             // 禁用UI
             IsUiEnabled = false;
@@ -761,7 +761,7 @@ namespace TrendChartApp
             var sampledData = SampleData(data, _samplingFactor);
 
             // 創建數據系列
-            var dataSeries = new XyDataSeries<DateTime, double> { SeriesName = tag.TagName };
+            var dataSeries = new XyDataSeries<DateTime, double> { SeriesName = tag.TagNo };
 
             // 添加數據點
             foreach (var point in sampledData)

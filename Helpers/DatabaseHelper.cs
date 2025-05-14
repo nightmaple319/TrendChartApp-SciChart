@@ -33,6 +33,7 @@ namespace TrendChartApp.Helpers
 
                     using (var command = new SqlCommand(query, connection))
                     {
+                        command.CommandTimeout = 0;
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -89,7 +90,7 @@ namespace TrendChartApp.Helpers
                     {
                         command.Parameters.AddWithValue("@StartTime", startTime);
                         command.Parameters.AddWithValue("@EndTime", endTime);
-
+                        command.CommandTimeout = 0;
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -136,7 +137,7 @@ namespace TrendChartApp.Helpers
                     {
                         command.Parameters.AddWithValue("@StartTime", startTime);
                         command.Parameters.AddWithValue("@EndTime", endTime);
-
+                        command.CommandTimeout = 0;
                         using (var reader = await command.ExecuteReaderAsync())
                         {
                             while (await reader.ReadAsync())
@@ -176,6 +177,7 @@ namespace TrendChartApp.Helpers
 
                     using (var command = new SqlCommand(query, connection))
                     {
+                        command.CommandTimeout = 300; // 設定為1分鐘
                         command.Parameters.AddWithValue("@TableName", tableName);
                         return (int)command.ExecuteScalar() == 1;
                     }
