@@ -26,15 +26,14 @@
         </Grid.RowDefinitions>
 
         <!-- Menu Bar -->
-        <Menu x:Name="mainMenu" Grid.Row="0" Visibility="Visible">
-            <MenuItem Header="檔案">
-                <MenuItem Header="資料庫連線設定" Click="OpenDatabaseConnectionWindow"/>
-                <MenuItem Background="#252526" Header="匯出趨勢圖成圖片檔" Click="ExportChartImage"/>
+        <Menu x:Name="mainMenu" Background="#252526" FontSize="14" Grid.Row="0" Visibility="Visible">
+            <MenuItem Background="#252526" Header="File">
+                <MenuItem Background="#252526" Header="資料庫連線設定" Click="OpenDatabaseConnectionWindow"/>
+                <MenuItem Header="匯出趨勢圖成圖片檔" Click="ExportChartImage"/>
                 <MenuItem Header="匯出趨勢資料成CSV檔案" Click="ExportTrendData"/>
-                <Separator/>
                 <MenuItem Header="離開" Click="ExitApplication"/>
             </MenuItem>
-            <MenuItem Header="趨勢圖">
+            <MenuItem Header="Trend Setting">
                 <MenuItem Header="選擇標籤" Click="OpenTagSelectionWindow"/>
                 <MenuItem Header="更新趨勢圖" Click="UpdateChart"/>
             </MenuItem>

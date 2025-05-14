@@ -12,7 +12,14 @@ namespace TrendChartApp.Views
         // 連線字串格式: "Server={0};Database={1};User Id={2};Password={3};"
         private string _originalConnectionString;
 
-        public string ConnectionString { get; private set; }
+        public static string ConnectionString
+        {
+            get { return AppConfig.ConnectionString; }
+            set
+            {
+                AppConfig.ConnectionString = value;
+            }
+        }
 
         public DatabaseConnectionWindow(string currentConnectionString)
         {

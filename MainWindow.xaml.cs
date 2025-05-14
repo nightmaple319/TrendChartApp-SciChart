@@ -38,7 +38,7 @@ namespace TrendChartApp
         #region 參數宣告
 
         // Database helper
-        private readonly DatabaseHelper _dbHelper;
+        private DatabaseHelper _dbHelper;
 
         // SciChart Surface
         private SciChartSurface _sciChartSurface;
@@ -500,7 +500,7 @@ namespace TrendChartApp
             if (connectionWindow.ShowDialog() == true)
             {
                 // 如果用戶按了「儲存」，則更新連線字串並重新初始化資料庫連接
-                string newConnectionString = connectionWindow.ConnectionString;
+                string newConnectionString = AppConfig.ConnectionString;
 
                 // 更新 AppConfig 中的連線字串
                 AppConfig.ConnectionString = newConnectionString;
