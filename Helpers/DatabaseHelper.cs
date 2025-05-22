@@ -50,13 +50,13 @@ namespace TrendChartApp.Helpers
                 {
                     var tag = new TagInfo
                     {
-                        Index = reader.GetInt32("iIndex"),
-                        GroupNo = reader.GetInt32("GroupNo"),
-                        GroupName = reader.GetString("GroupName"),
-                        TagNo = reader.GetString("TAGNo"),
-                        TagName = reader.GetString("TAGName"),
-                        TableNo = reader.GetInt32("TableNo"),
-                        ItemPos = reader.GetInt32("ItemPos"),
+                        Index = Convert.ToInt32(reader["iIndex"]),
+                        GroupNo = Convert.ToInt32(reader["GroupNo"]),
+                        GroupName = reader["GroupName"]?.ToString() ?? string.Empty,
+                        TagNo = reader["TAGNo"]?.ToString() ?? string.Empty,
+                        TagName = reader["TAGName"]?.ToString() ?? string.Empty,
+                        TableNo = Convert.ToInt32(reader["TableNo"]),
+                        ItemPos = Convert.ToInt32(reader["ItemPos"]),
                         IsSelected = false
                     };
 
@@ -114,7 +114,7 @@ namespace TrendChartApp.Helpers
                         result.Add(new TrendDataPoint
                         {
                             DateTime = reader.GetDateTime("DateTime"),
-                            Value = Math.Round(reader.GetDouble(columnName), 2)
+                            Value = Math.Round(Convert.ToDouble(reader[columnName]), 2)
                         });
                     }
                 }
@@ -198,7 +198,7 @@ namespace TrendChartApp.Helpers
                             var columnName = $"Item{tag.ItemPos:D2}";
                             if (!reader.IsDBNull(columnName))
                             {
-                                var value = Math.Round(reader.GetDouble(columnName), 2);
+                                var value = Math.Round(Convert.ToDouble(reader[columnName]), 2);
                                 result[tag.Index].Add(new TrendDataPoint
                                 {
                                     DateTime = dateTime,
