@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using TrendChartApp.Helpers;
 using TrendChartApp.Models;
+using TrendChartApp.Services;
 
 namespace TrendChartApp.Views
 {
@@ -22,6 +24,7 @@ namespace TrendChartApp.Views
         public ObservableCollection<TagInfo> SelectedTags { get; private set; }
         private readonly DatabaseHelper _dbHelper;
         private ICollectionView _filteredView;
+        private bool _isLoading = false;
 
         public TagSelectionWindow(ObservableCollection<TagInfo> currentSelectedTags)
         {
@@ -36,25 +39,31 @@ namespace TrendChartApp.Views
             // 初始化選定標籤集合
             SelectedTags = new ObservableCollection<TagInfo>(currentSelectedTags);
 
-            // 載入所有標籤
-            LoadTags();
-
             // 設置已選標籤列表資料來源
             selectedTagsListView.ItemsSource = SelectedTags;
 
             // 設置上下文
             DataContext = this;
+
+            // 異步載入標籤
+            Loaded += async (s, e) => await LoadTagsAsync();
         }
 
         /// <summary>
-        /// 載入標籤資料並設置篩選視圖
+        /// 異步載入標籤資料並設置篩選視圖
         /// </summary>
-        private void LoadTags()
+        private async Task LoadTagsAsync()
         {
+            if (_isLoading) return;
+
+            _isLoading = true;
             try
             {
-                // 獲取所有標籤
-                _allTags = _dbHelper.GetAllTags();
+                // 顯示載入狀態
+                tagsListView.IsEnabled = false;
+
+                // 異步獲取所有標籤
+                _allTags = await _dbHelper.GetAllTagsAsync();
 
                 // 更新已選狀態
                 UpdateSelectedStatus();
@@ -73,10 +82,18 @@ namespace TrendChartApp.Views
 
                 // 確保ListView重新整理
                 tagsListView.Items.Refresh();
+
+                LoggingService.Instance.LogInfo($"已載入 {_allTags.Count} 個標籤", "TagSelectionWindow");
             }
             catch (Exception ex)
             {
+                LoggingService.Instance.LogError("載入標籤資料失敗", ex, "TagSelectionWindow");
                 MessageBox.Show($"載入標籤資料出錯: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                tagsListView.IsEnabled = true;
+                _isLoading = false;
             }
         }
 
@@ -123,34 +140,44 @@ namespace TrendChartApp.Views
         /// </summary>
         private void SelectTag(object sender, RoutedEventArgs e)
         {
-            var checkbox = (CheckBox)sender;
-            var tag = (TagInfo)checkbox.DataContext;
-
-            if (checkbox.IsChecked == true)
+            try
             {
-                // Check if we've reached the maximum of 8 selected tags
-                if (SelectedTags.Count >= 8)
-                {
-                    MessageBox.Show("您最多可以選擇8個標籤。", "選擇限制", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    checkbox.IsChecked = false;
-                    tag.IsSelected = false;
-                    return;
-                }
+                var checkbox = (CheckBox)sender;
+                var tag = (TagInfo)checkbox.DataContext;
 
-                // Add to selected tags if not already there
-                if (!SelectedTags.Any(t => t.Index == tag.Index))
+                if (checkbox.IsChecked == true)
                 {
-                    SelectedTags.Add(tag);
+                    // Check if we've reached the maximum of 8 selected tags
+                    if (SelectedTags.Count >= 8)
+                    {
+                        MessageBox.Show("您最多可以選擇8個標籤。", "選擇限制", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        checkbox.IsChecked = false;
+                        tag.IsSelected = false;
+                        return;
+                    }
+
+                    // Add to selected tags if not already there
+                    if (!SelectedTags.Any(t => t.Index == tag.Index))
+                    {
+                        SelectedTags.Add(tag);
+                        LoggingService.Instance.LogDebug($"已選擇標籤: {tag.TagName}", "TagSelectionWindow");
+                    }
+                }
+                else
+                {
+                    // Remove from selected tags
+                    var tagToRemove = SelectedTags.FirstOrDefault(t => t.Index == tag.Index);
+                    if (tagToRemove != null)
+                    {
+                        SelectedTags.Remove(tagToRemove);
+                        LoggingService.Instance.LogDebug($"已取消選擇標籤: {tag.TagName}", "TagSelectionWindow");
+                    }
                 }
             }
-            else
+            catch (Exception ex)
             {
-                // Remove from selected tags
-                var tagToRemove = SelectedTags.FirstOrDefault(t => t.Index == tag.Index);
-                if (tagToRemove != null)
-                {
-                    SelectedTags.Remove(tagToRemove);
-                }
+                LoggingService.Instance.LogError("標籤選擇處理失敗", ex, "TagSelectionWindow");
+                MessageBox.Show($"處理標籤選擇時發生錯誤: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -159,8 +186,16 @@ namespace TrendChartApp.Views
         /// </summary>
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
-            DialogResult = true;
-            Close();
+            try
+            {
+                LoggingService.Instance.LogInfo($"用戶確認選擇了 {SelectedTags.Count} 個標籤", "TagSelectionWindow");
+                DialogResult = true;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Instance.LogError("確認選擇時發生錯誤", ex, "TagSelectionWindow");
+            }
         }
 
         /// <summary>
@@ -168,8 +203,16 @@ namespace TrendChartApp.Views
         /// </summary>
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
-            DialogResult = false;
-            Close();
+            try
+            {
+                LoggingService.Instance.LogInfo("用戶取消了標籤選擇", "TagSelectionWindow");
+                DialogResult = false;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Instance.LogError("取消選擇時發生錯誤", ex, "TagSelectionWindow");
+            }
         }
     }
 }

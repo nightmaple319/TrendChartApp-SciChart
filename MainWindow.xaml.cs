@@ -15,6 +15,7 @@ using Microsoft.Win32;
 using TrendChartApp.Models;
 using TrendChartApp.Helpers;
 using TrendChartApp.Views;
+using TrendChartApp.Services;
 using System.Windows.Threading;
 using SciChart.Charting.Model.DataSeries;
 using SciChart.Charting.Visuals.RenderableSeries;
@@ -37,8 +38,12 @@ namespace TrendChartApp
     {
         #region 參數宣告
 
-        // Database helper
+        // Services
         private DatabaseHelper _dbHelper;
+        private ConfigurationService _configService;
+        private ValidationService _validationService;
+        private DataCacheService _cacheService;
+        private ProgressService _progressService;
 
         // SciChart Surface
         private SciChartSurface _sciChartSurface;
@@ -229,10 +234,39 @@ namespace TrendChartApp
         public MainWindow()
         {
             InitializeComponent();
+            InitializeServices();
+            InitializeControls();
+            InitializeSciChart();
+        }
+
+        /// <summary>
+        /// 初始化服務
+        /// </summary>
+        private void InitializeServices()
+        {
+            // 初始化配置服務
+            _configService = new ConfigurationService();
 
             // 初始化資料庫助手
-            _dbHelper = new DatabaseHelper(AppConfig.ConnectionString);
+            _dbHelper = new DatabaseHelper(_configService.Settings.Database.ConnectionString);
 
+            // 初始化其他服務
+            _validationService = new ValidationService();
+            _cacheService = new DataCacheService();
+            _progressService = new ProgressService(Dispatcher);
+
+            // 初始化全域異常處理
+            GlobalExceptionHandler.Initialize();
+
+            // 記錄應用程式啟動
+            LoggingService.Instance.LogInfo("應用程式啟動", "MainWindow");
+        }
+
+        /// <summary>
+        /// 初始化控件
+        /// </summary>
+        private void InitializeControls()
+        {
             // 初始化集合
             _renderableSeries = new ObservableCollection<BaseRenderableSeries>();
             _selectedTags = new ObservableCollection<TagInfo>();
@@ -255,9 +289,6 @@ namespace TrendChartApp
 
             // 設置日期時間格式
             SetDateTimeFormatter(TimeSpan.FromHours(1));
-
-            // 初始化 SciChart
-            InitializeSciChart();
         }
 
         /// <summary>
@@ -267,7 +298,7 @@ namespace TrendChartApp
         {
             // 設置默認時間範圍 (最近1小時)
             DateTime currentTime = DateTime.Now;
-            DateTime startTime = currentTime.AddHours(-AppConfig.DefaultChartTimeRangeHours);
+            DateTime startTime = currentTime.AddHours(-_configService.Settings.Chart.DefaultTimeRangeHours);
 
             // 設置開始和結束時間
             EndDate = currentTime.Date;
@@ -287,123 +318,133 @@ namespace TrendChartApp
         /// </summary>
         private void InitializeSciChart()
         {
-            // 創建新的 SciChartSurface
-            _sciChartSurface = new SciChartSurface();
-
-            // 創建X軸 (DateTimeAxis)
-            var xAxis = new DateTimeAxis
-            {
-                AxisTitle = "時間",
-                TextFormatting = DateTimeFormatter,
-                DrawMajorBands = false,
-                AutoRange = AutoRange.Never,
-                Foreground = new SolidColorBrush(Colors.White)
-            };
-
-            // 繫結 VisibleRange
-            var xAxisBinding = new Binding("VisibleRange")
-            {
-                Source = this,
-                Mode = BindingMode.TwoWay
-            };
-            xAxis.SetBinding(DateTimeAxis.VisibleRangeProperty, xAxisBinding);
-
-            // 繫結 TextFormatting
-            var formatterBinding = new Binding("DateTimeFormatter")
-            {
-                Source = this,
-                Mode = BindingMode.OneWay
-            };
-            xAxis.SetBinding(DateTimeAxis.TextFormattingProperty, formatterBinding);
-
-            // 創建Y軸 (NumericAxis)
-            var yAxis = new NumericAxis
-            {
-                AxisTitle = "數值",
-                AutoRange = AutoRange.Never,
-                Foreground = new SolidColorBrush(Colors.White)
-            };
-
-            // 繫結 VisibleRange
-            var yAxisBinding = new Binding("YAxisRange")
-            {
-                Source = this,
-                Mode = BindingMode.TwoWay
-            };
-            yAxis.SetBinding(NumericAxis.VisibleRangeProperty, yAxisBinding);
-
-            // 加入軸到圖表
-            _sciChartSurface.XAxes.Add(xAxis);
-            _sciChartSurface.YAxes.Add(yAxis);
-
-            // 添加修飾器
-            var modifierGroup = new ModifierGroup();
-
-            // 添加縮放和平移功能
-            modifierGroup.ChildModifiers.Add(new RubberBandXyZoomModifier
-            {
-                IsXAxisOnly = true,
-                ExecuteOn = ExecuteOn.MouseLeftButton,
-                ZoomExtentsY = false
-            });
-
-            modifierGroup.ChildModifiers.Add(new ZoomPanModifier
-            {
-                ExecuteOn = ExecuteOn.MouseRightButton,
-                ClipModeX = ClipMode.None
-            });
-
-            modifierGroup.ChildModifiers.Add(new ZoomExtentsModifier
-            {
-                ExecuteOn = ExecuteOn.MouseDoubleClick
-            });
-
-            modifierGroup.ChildModifiers.Add(new MouseWheelZoomModifier());
-
-            // 添加遊標修飾器
-            var cursorModifier = new CursorModifier
-            {
-                ShowTooltip = true,
-                ShowAxisLabels = true,
-                SourceMode = SourceMode.AllSeries
-            };
-            modifierGroup.ChildModifiers.Add(cursorModifier);
-
-            // 添加圖例修飾器
-            var legendModifier = new LegendModifier
-            {
-                Orientation = Orientation.Vertical,
-                LegendPlacement = LegendPlacement.Right,
-                ShowLegend = true
-            };
-            modifierGroup.ChildModifiers.Add(legendModifier);
-
-            // 應用修飾器到圖表
-            _sciChartSurface.ChartModifier = modifierGroup;
-
-            // 設置背景色
-            _sciChartSurface.Background = (SolidColorBrush)FindResource("PanelBrush");
-
-            // 使用高性能渲染器
-            _sciChartSurface.RenderableSeries = new ObservableCollection<IRenderableSeries>();
-
-            // 嘗試設置渲染表面 (如果版本支持)
             try
             {
-                // 使用反射來設置渲染表面，以處理不同版本的API
-                var renderSurfaceProperty = typeof(SciChartSurface).GetProperty("RenderSurface");
-                if (renderSurfaceProperty != null)
-                {
-                    renderSurfaceProperty.SetValue(_sciChartSurface, 2); // 2 通常對應 DirectX 或 VisualXccelerator 
-                }
-            }
-            catch
-            {
-                // 忽略錯誤，如果不支援此功能
-            }
+                // 創建新的 SciChartSurface
+                _sciChartSurface = new SciChartSurface();
 
-            // 將圖表添加到容器
-            chartContainer.Content = _sciChartSurface;
+                // 創建X軸 (DateTimeAxis)
+                var xAxis = new DateTimeAxis
+                {
+                    AxisTitle = "時間",
+                    TextFormatting = DateTimeFormatter,
+                    DrawMajorBands = false,
+                    AutoRange = AutoRange.Never,
+                    Foreground = new SolidColorBrush(Colors.White)
+                };
+
+                // 繫結 VisibleRange
+                var xAxisBinding = new Binding("VisibleRange")
+                {
+                    Source = this,
+                    Mode = BindingMode.TwoWay
+                };
+                xAxis.SetBinding(DateTimeAxis.VisibleRangeProperty, xAxisBinding);
+
+                // 繫結 TextFormatting
+                var formatterBinding = new Binding("DateTimeFormatter")
+                {
+                    Source = this,
+                    Mode = BindingMode.OneWay
+                };
+                xAxis.SetBinding(DateTimeAxis.TextFormattingProperty, formatterBinding);
+
+                // 創建Y軸 (NumericAxis)
+                var yAxis = new NumericAxis
+                {
+                    AxisTitle = "數值",
+                    AutoRange = AutoRange.Never,
+                    Foreground = new SolidColorBrush(Colors.White)
+                };
+
+                // 繫結 VisibleRange
+                var yAxisBinding = new Binding("YAxisRange")
+                {
+                    Source = this,
+                    Mode = BindingMode.TwoWay
+                };
+                yAxis.SetBinding(NumericAxis.VisibleRangeProperty, yAxisBinding);
+
+                // 加入軸到圖表
+                _sciChartSurface.XAxes.Add(xAxis);
+                _sciChartSurface.YAxes.Add(yAxis);
+
+                // 添加修飾器
+                var modifierGroup = new ModifierGroup();
+
+                // 添加縮放和平移功能
+                modifierGroup.ChildModifiers.Add(new RubberBandXyZoomModifier
+                {
+                    IsXAxisOnly = true,
+                    ExecuteOn = ExecuteOn.MouseLeftButton,
+                    ZoomExtentsY = false
+                });
+
+                modifierGroup.ChildModifiers.Add(new ZoomPanModifier
+                {
+                    ExecuteOn = ExecuteOn.MouseRightButton,
+                    ClipModeX = ClipMode.None
+                });
+
+                modifierGroup.ChildModifiers.Add(new ZoomExtentsModifier
+                {
+                    ExecuteOn = ExecuteOn.MouseDoubleClick
+                });
+
+                modifierGroup.ChildModifiers.Add(new MouseWheelZoomModifier());
+
+                // 添加遊標修飾器
+                var cursorModifier = new CursorModifier
+                {
+                    ShowTooltip = true,
+                    ShowAxisLabels = true,
+                    SourceMode = SourceMode.AllSeries
+                };
+                modifierGroup.ChildModifiers.Add(cursorModifier);
+
+                // 添加圖例修飾器
+                var legendModifier = new LegendModifier
+                {
+                    Orientation = Orientation.Vertical,
+                    LegendPlacement = LegendPlacement.Right,
+                    ShowLegend = true
+                };
+                modifierGroup.ChildModifiers.Add(legendModifier);
+
+                // 應用修飾器到圖表
+                _sciChartSurface.ChartModifier = modifierGroup;
+
+                // 設置背景色
+                _sciChartSurface.Background = (SolidColorBrush)FindResource("PanelBrush");
+
+                // 使用高性能渲染器
+                _sciChartSurface.RenderableSeries = new ObservableCollection<IRenderableSeries>();
+
+                // 嘗試設置渲染表面 (如果版本支持)
+                try
+                {
+                    // 使用反射來設置渲染表面，以處理不同版本的API
+                    var renderSurfaceProperty = typeof(SciChartSurface).GetProperty("RenderSurface");
+                    if (renderSurfaceProperty != null)
+                    {
+                        renderSurfaceProperty.SetValue(_sciChartSurface, 2); // 2 通常對應 DirectX 或 VisualXccelerator 
+                    }
+                }
+                catch
+                {
+                    // 忽略錯誤，如果不支援此功能
+                }
+
+                // 將圖表添加到容器
+                chartContainer.Content = _sciChartSurface;
+
+                LoggingService.Instance.LogInfo("SciChart 初始化完成", "MainWindow");
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Instance.LogError("SciChart 初始化失敗", ex, "MainWindow");
+                MessageBox.Show($"圖表初始化失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         #endregion
@@ -413,15 +454,36 @@ namespace TrendChartApp
         /// <summary>
         /// 打開標籤選擇視窗按鈕點擊事件
         /// </summary>
-        private void OpenTagSelectionWindow(object sender, RoutedEventArgs e)
+        private async void OpenTagSelectionWindow(object sender, RoutedEventArgs e)
         {
-            var selectionWindow = new TagSelectionWindow(SelectedTags);
-            selectionWindow.Owner = this;
-
-            if (selectionWindow.ShowDialog() == true)
+            try
             {
-                // 更新選中的標籤
-                SelectedTags = new ObservableCollection<TagInfo>(selectionWindow.SelectedTags);
+                var selectionWindow = new TagSelectionWindow(SelectedTags);
+                selectionWindow.Owner = this;
+
+                if (selectionWindow.ShowDialog() == true)
+                {
+                    // 更新選中的標籤
+                    SelectedTags = new ObservableCollection<TagInfo>(selectionWindow.SelectedTags);
+
+                    // 驗證標籤選擇
+                    var validation = _validationService.ValidateTagSelection(SelectedTags, _configService.Settings.Chart.MaxSelectedTags);
+                    if (!validation.IsValid)
+                    {
+                        MessageBox.Show(validation.GetErrorMessage(), "標籤選擇錯誤", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                    else if (validation.HasWarnings)
+                    {
+                        MessageBox.Show(validation.GetWarningMessage(), "標籤選擇警告", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+
+                    LoggingService.Instance.LogInfo($"已選擇 {SelectedTags.Count} 個標籤", "MainWindow");
+                }
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Instance.LogError("打開標籤選擇視窗失敗", ex, "MainWindow");
+                MessageBox.Show($"打開標籤選擇視窗時發生錯誤: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -430,52 +492,87 @@ namespace TrendChartApp
         /// </summary>
         private async void UpdateChart(object sender, RoutedEventArgs e)
         {
-            // 檢查是否有選中的標籤
-            if (SelectedTags.Count == 0)
-            {
-                MessageBox.Show("請先選擇標籤。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            // 顯示載入覆蓋層
-            ShowLoadingOverlay("正在從資料庫載入趨勢資料，這可能需要一些時間...");
-
-            // 禁用UI
-            IsUiEnabled = false;
+            using var perfTimer = new PerformanceTimer("UpdateChart");
 
             try
             {
-                // 刪除現有系列
-                ClearExistingSeries();
-
-                // 為每個選中標籤添加新系列
-                foreach (var tag in SelectedTags)
+                // 驗證圖表設定
+                var validation = _validationService.ValidateChartSettings(StartTime, EndTime, YAxisMin, YAxisMax, SelectedTags);
+                if (!validation.IsValid)
                 {
-                    await AddSeries(tag);
+                    MessageBox.Show(validation.GetErrorMessage(), "設定錯誤", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
                 }
 
-                // 計算合適的時間格式和採樣係數
-                var timeSpan = EndTime - StartTime;
-                SetDateTimeFormatter(timeSpan);
-                CalculateSamplingFactor(timeSpan);
+                if (validation.HasWarnings)
+                {
+                    var result = MessageBox.Show($"{validation.GetWarningMessage()}\n\n是否繼續？",
+                        "設定警告", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (result != MessageBoxResult.Yes)
+                        return;
+                }
 
-                // 設置X軸範圍
-                VisibleRange = new DateRange(StartTime, EndTime);
+                // 檢查是否有選中的標籤
+                if (SelectedTags.Count == 0)
+                {
+                    MessageBox.Show("請先選擇標籤。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
 
-                // 自動調整Y軸範圍
-                AutoAdjustYAxisRange();
+                // 使用進度服務執行更新
+                await _progressService.ExecuteWithProgressAsync(async (progress, cancellationToken) =>
+                {
+                    // 刪除現有系列
+                    progress.Report(new ProgressInfo("清理現有圖表..."));
+                    ClearExistingSeries();
+
+                    // 批次載入資料
+                    var tagDataDict = await _dbHelper.GetMultipleTagDataWithProgressAsync(
+                        SelectedTags, StartTime, EndTime, progress, cancellationToken);
+
+                    // 為每個選中標籤添加新系列
+                    int processedTags = 0;
+                    foreach (var tag in SelectedTags)
+                    {
+                        progress.Report(new ProgressInfo($"建立圖表系列: {tag.TagName}",
+                            (double)processedTags / SelectedTags.Count * 100));
+
+                        if (tagDataDict.TryGetValue(tag.Index, out var data) && data.Count > 0)
+                        {
+                            await AddSeries(tag, data);
+                        }
+
+                        processedTags++;
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+
+                    // 計算合適的時間格式和採樣係數
+                    var timeSpan = EndTime - StartTime;
+                    SetDateTimeFormatter(timeSpan);
+                    CalculateSamplingFactor(timeSpan);
+
+                    // 設置X軸範圍
+                    VisibleRange = new DateRange(StartTime, EndTime);
+
+                    // 自動調整Y軸範圍
+                    if (_configService.Settings.Chart.AutoYAxisScale)
+                    {
+                        AutoAdjustYAxisRange();
+                    }
+
+                    return true;
+                }, "正在更新趨勢圖...");
+
+                LoggingService.Instance.LogInfo($"圖表更新完成，共載入 {SelectedTags.Count} 個標籤的資料", "MainWindow");
+            }
+            catch (OperationCanceledException)
+            {
+                LoggingService.Instance.LogInfo("圖表更新被用戶取消", "MainWindow");
             }
             catch (Exception ex)
             {
+                LoggingService.Instance.LogError("更新圖表失敗", ex, "MainWindow");
                 MessageBox.Show($"更新圖表時發生錯誤: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                // 啟用UI
-                IsUiEnabled = true;
-
-                // 隱藏載入覆蓋層
-                HideLoadingOverlay();
             }
         }
 
@@ -484,7 +581,15 @@ namespace TrendChartApp
         /// </summary>
         private void ResetZoom(object sender, RoutedEventArgs e)
         {
-            VisibleRange = new DateRange(StartTime, EndTime);
+            try
+            {
+                VisibleRange = new DateRange(StartTime, EndTime);
+                LoggingService.Instance.LogInfo("重置圖表縮放", "MainWindow");
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Instance.LogError("重置縮放失敗", ex, "MainWindow");
+            }
         }
 
         /// <summary>
@@ -492,25 +597,38 @@ namespace TrendChartApp
         /// </summary>
         private void OpenDatabaseConnectionWindow(object sender, RoutedEventArgs e)
         {
-            // 創建資料庫連線設定視窗的實例，並傳入當前的連線字串
-            var connectionWindow = new Views.DatabaseConnectionWindow(AppConfig.ConnectionString);
-            connectionWindow.Owner = this;
-
-            // 顯示視窗並等待結果
-            if (connectionWindow.ShowDialog() == true)
+            try
             {
-                // 如果用戶按了「儲存」，則更新連線字串並重新初始化資料庫連接
-                string newConnectionString = AppConfig.ConnectionString;
+                // 創建資料庫連線設定視窗的實例，並傳入當前的連線字串
+                var connectionWindow = new Views.DatabaseConnectionWindow(_configService.Settings.Database.ConnectionString);
+                connectionWindow.Owner = this;
 
-                // 更新 AppConfig 中的連線字串
-                AppConfig.ConnectionString = newConnectionString;
+                // 顯示視窗並等待結果
+                if (connectionWindow.ShowDialog() == true)
+                {
+                    // 如果用戶按了「儲存」，則更新連線字串並重新初始化資料庫連接
+                    string newConnectionString = AppConfig.ConnectionString;
 
-                // 重新創建資料庫助手
-                _dbHelper = new DatabaseHelper(AppConfig.ConnectionString);
+                    // 更新配置服務中的連線字串
+                    _configService.UpdateConnectionString(newConnectionString);
 
-                // 提示用戶重新載入資料
-                MessageBox.Show("資料庫連線設定已更新。請重新載入資料以應用新的設定。",
-                                "連線設定已更新", MessageBoxButton.OK, MessageBoxImage.Information);
+                    // 重新創建資料庫助手
+                    _dbHelper = new DatabaseHelper(newConnectionString);
+
+                    // 清空緩存
+                    _cacheService.ClearCache();
+
+                    // 提示用戶重新載入資料
+                    MessageBox.Show("資料庫連線設定已更新。請重新載入資料以應用新的設定。",
+                                    "連線設定已更新", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    LoggingService.Instance.LogInfo("資料庫連線設定已更新", "MainWindow");
+                }
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Instance.LogError("打開資料庫連線設定視窗失敗", ex, "MainWindow");
+                MessageBox.Show($"打開資料庫連線設定時發生錯誤: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -519,124 +637,161 @@ namespace TrendChartApp
         /// </summary>
         private void ExportChartImage(object sender, RoutedEventArgs e)
         {
-            var saveFileDialog = new SaveFileDialog
+            try
             {
-                Filter = "PNG Image (*.png)|*.png|JPEG Image (*.jpg)|*.jpg|Bitmap Image (*.bmp)|*.bmp",
-                DefaultExt = ".png",
-                Title = "Save Chart as Image"
-            };
-
-            if (saveFileDialog.ShowDialog() == true)
-            {
-                try
+                var saveFileDialog = new SaveFileDialog
                 {
+                    Filter = "PNG Image (*.png)|*.png|JPEG Image (*.jpg)|*.jpg|Bitmap Image (*.bmp)|*.bmp",
+                    DefaultExt = ".png",
+                    Title = "Save Chart as Image"
+                };
+
+                if (saveFileDialog.ShowDialog() == true)
+                {
+                    // 驗證檔案路徑
+                    var validation = _validationService.ValidateFilePath(saveFileDialog.FileName, new[] { ".png", ".jpg", ".jpeg", ".bmp" });
+                    if (!validation.IsValid)
+                    {
+                        MessageBox.Show(validation.GetErrorMessage(), "檔案路徑錯誤", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
                     Utils.SaveElementAsImage(_sciChartSurface, saveFileDialog.FileName);
                     MessageBox.Show("圖片已成功保存。", "匯出成功", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    LoggingService.Instance.LogInfo($"圖表已匯出至: {saveFileDialog.FileName}", "MainWindow");
                 }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"保存圖片時發生錯誤: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Instance.LogError("匯出圖片失敗", ex, "MainWindow");
+                MessageBox.Show($"保存圖片時發生錯誤: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         /// <summary>
         /// 匯出趨勢數據為CSV
         /// </summary>
-        private void ExportTrendData(object sender, RoutedEventArgs e)
+        private async void ExportTrendData(object sender, RoutedEventArgs e)
         {
-            // 檢查是否有數據
-            if (_dataSeries == null || _dataSeries.Count == 0)
+            try
             {
-                MessageBox.Show("沒有可匯出的數據。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var saveFileDialog = new SaveFileDialog
-            {
-                Filter = "CSV Files (*.csv)|*.csv",
-                DefaultExt = ".csv",
-                Title = "Export Trend Data"
-            };
-
-            if (saveFileDialog.ShowDialog() == true)
-            {
-                try
+                // 檢查是否有數據
+                if (_dataSeries == null || _dataSeries.Count == 0)
                 {
-                    ShowLoadingOverlay("正在匯出資料...");
+                    MessageBox.Show("沒有可匯出的數據。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
 
-                    using (var writer = new StreamWriter(saveFileDialog.FileName))
+                var saveFileDialog = new SaveFileDialog
+                {
+                    Filter = "CSV Files (*.csv)|*.csv",
+                    DefaultExt = ".csv",
+                    Title = "Export Trend Data"
+                };
+
+                if (saveFileDialog.ShowDialog() == true)
+                {
+                    // 驗證檔案路徑
+                    var validation = _validationService.ValidateFilePath(saveFileDialog.FileName, new[] { ".csv" });
+                    if (!validation.IsValid)
                     {
-                        // 寫入標題行
-                        var headerLine = "DateTime";
-                        foreach (var tag in SelectedTags)
+                        MessageBox.Show(validation.GetErrorMessage(), "檔案路徑錯誤", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
+                    await _progressService.ExecuteWithProgressAsync(async (progress, cancellationToken) =>
+                    {
+                        progress.Report(new ProgressInfo("正在匯出資料..."));
+
+                        using (var writer = new StreamWriter(saveFileDialog.FileName))
                         {
-                            headerLine += $",{tag.TagName}";
-                        }
-                        writer.WriteLine(headerLine);
-
-                        // 獲取所有時間點
-                        var allTimePoints = new HashSet<DateTime>();
-                        foreach (var series in _dataSeries.Values)
-                        {
-                            for (int i = 0; i < series.Count; i++)
-                            {
-                                allTimePoints.Add(series.XValues[i]);
-                            }
-                        }
-
-                        // 排序時間點
-                        var sortedTimePoints = allTimePoints.OrderBy(t => t).ToList();
-
-                        // 寫入資料行
-                        foreach (var timePoint in sortedTimePoints)
-                        {
-                            var line = timePoint.ToString("yyyy-MM-dd HH:mm:ss");
-
+                            // 寫入標題行
+                            var headerLine = "DateTime";
                             foreach (var tag in SelectedTags)
                             {
-                                if (_dataSeries.TryGetValue(tag.Index, out var series))
-                                {
-                                    // 查找最接近的時間點
-                                    int index = -1;
-                                    for (int i = 0; i < series.Count; i++)
-                                    {
-                                        if (series.XValues[i] == timePoint)
-                                        {
-                                            index = i;
-                                            break;
-                                        }
-                                    }
+                                headerLine += $",{tag.TagName}";
+                            }
+                            await writer.WriteLineAsync(headerLine);
 
-                                    if (index != -1)
+                            // 獲取所有時間點
+                            var allTimePoints = new HashSet<DateTime>();
+                            foreach (var series in _dataSeries.Values)
+                            {
+                                for (int i = 0; i < series.Count; i++)
+                                {
+                                    allTimePoints.Add(series.XValues[i]);
+                                }
+                            }
+
+                            // 排序時間點
+                            var sortedTimePoints = allTimePoints.OrderBy(t => t).ToList();
+                            int totalPoints = sortedTimePoints.Count;
+                            int processedPoints = 0;
+
+                            // 寫入資料行
+                            foreach (var timePoint in sortedTimePoints)
+                            {
+                                var line = timePoint.ToString("yyyy-MM-dd HH:mm:ss");
+
+                                foreach (var tag in SelectedTags)
+                                {
+                                    if (_dataSeries.TryGetValue(tag.Index, out var series))
                                     {
-                                        line += $",{series.YValues[index]:F2}";
+                                        // 查找最接近的時間點
+                                        int index = -1;
+                                        for (int i = 0; i < series.Count; i++)
+                                        {
+                                            if (series.XValues[i] == timePoint)
+                                            {
+                                                index = i;
+                                                break;
+                                            }
+                                        }
+
+                                        if (index != -1)
+                                        {
+                                            line += $",{series.YValues[index]:F2}";
+                                        }
+                                        else
+                                        {
+                                            line += ",";
+                                        }
                                     }
                                     else
                                     {
                                         line += ",";
                                     }
                                 }
-                                else
-                                {
-                                    line += ",";
-                                }
-                            }
 
-                            writer.WriteLine(line);
+                                await writer.WriteLineAsync(line);
+
+                                processedPoints++;
+                                if (processedPoints % 1000 == 0) // 每1000筆更新一次進度
+                                {
+                                    var percentage = (double)processedPoints / totalPoints * 100;
+                                    progress.Report(new ProgressInfo($"已處理 {processedPoints}/{totalPoints} 筆資料", percentage));
+                                }
+
+                                cancellationToken.ThrowIfCancellationRequested();
+                            }
                         }
-                    }
+
+                        return true;
+                    }, "正在匯出趨勢資料...");
 
                     MessageBox.Show("資料已成功匯出。", "匯出成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                    LoggingService.Instance.LogInfo($"趨勢資料已匯出至: {saveFileDialog.FileName}", "MainWindow");
                 }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"匯出資料時發生錯誤: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-                finally
-                {
-                    HideLoadingOverlay();
-                }
+            }
+            catch (OperationCanceledException)
+            {
+                LoggingService.Instance.LogInfo("資料匯出被用戶取消", "MainWindow");
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Instance.LogError("匯出資料失敗", ex, "MainWindow");
+                MessageBox.Show($"匯出資料時發生錯誤: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -645,7 +800,19 @@ namespace TrendChartApp
         /// </summary>
         private void ExitApplication(object sender, RoutedEventArgs e)
         {
-            Application.Current.Shutdown();
+            try
+            {
+                // 保存視窗設定
+                _configService.UpdateWindowSettings(Width, Height, WindowState.ToString(), Left, Top);
+
+                LoggingService.Instance.LogInfo("應用程式正常關閉", "MainWindow");
+                Application.Current.Shutdown();
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Instance.LogError("應用程式關閉時發生錯誤", ex, "MainWindow");
+                Application.Current.Shutdown();
+            }
         }
 
         /// <summary>
@@ -663,6 +830,7 @@ namespace TrendChartApp
         }
 
         #endregion
+
         #region 輔助方法
 
         /// <summary>
@@ -712,7 +880,8 @@ namespace TrendChartApp
         private void CalculateSamplingFactor(TimeSpan timeSpan)
         {
             // 根據時間範圍和估計的數據點數來計算採樣係數
-            // 這是一個簡單的啟發式方法，可以根據實際需求調整
+            var threshold = _configService.Settings.Performance.DataSamplingThreshold;
+
             if (timeSpan.TotalDays > 30)
             {
                 _samplingFactor = 60; // 每60個點採樣1個
@@ -745,90 +914,75 @@ namespace TrendChartApp
         }
 
         /// <summary>
-        /// 為標籤添加數據系列
+        /// 為標籤添加數據系列（使用預載入的資料）
         /// </summary>
-        private async Task AddSeries(TagInfo tag)
+        private async Task AddSeries(TagInfo tag, List<TrendDataPoint> data)
         {
-            // 獲取標籤數據
-            var data = await _dbHelper.GetTagDataAsync(tag, StartTime, EndTime);
-
-            if (data.Count == 0)
+            try
             {
-                return; // 如果沒有數據則跳過
+                if (data.Count == 0)
+                {
+                    return; // 如果沒有數據則跳過
+                }
+
+                // 驗證數據
+                var validation = _validationService.ValidateTrendData(data, tag.TagName);
+                if (!validation.IsValid)
+                {
+                    LoggingService.Instance.LogWarning($"標籤 {tag.TagName} 的數據驗證失敗: {validation.GetErrorMessage()}", "MainWindow");
+                }
+
+                // 根據採樣係數縮減數據
+                var sampledData = DatabaseHelper.SampleDataIntelligently(data, _configService.Settings.Chart.MaxDataPoints);
+
+                // 創建數據系列
+                var dataSeries = new XyDataSeries<DateTime, double> { SeriesName = tag.TagNo };
+
+                // 添加數據點
+                foreach (var point in sampledData)
+                {
+                    dataSeries.Append(point.DateTime, point.Value);
+                }
+
+                // 存儲數據系列
+                _dataSeries[tag.Index] = dataSeries;
+
+                // 獲取顏色索引
+                int colorIndex = _renderableSeries.Count % _configService.Settings.Chart.DefaultColors.Count;
+                var colorString = _configService.Settings.Chart.DefaultColors[colorIndex];
+                var seriesColor = (Color)ColorConverter.ConvertFromString(colorString);
+
+                // 創建 FastLineRenderableSeries
+                var lineSeries = new FastLineRenderableSeries
+                {
+                    DataSeries = dataSeries,
+                    Stroke = seriesColor,
+                    StrokeThickness = _configService.Settings.Chart.LineThickness,
+                    AntiAliasing = true
+                };
+
+                // 設置點標記
+                var pointMarker = new EllipsePointMarker
+                {
+                    Width = 5,
+                    Height = 5,
+                    Fill = seriesColor,
+                    Stroke = seriesColor
+                };
+                lineSeries.PointMarker = pointMarker;
+
+                // 添加到渲染系列集合
+                _renderableSeries.Add(lineSeries);
+
+                // 添加到SciChart
+                _sciChartSurface.RenderableSeries.Add(lineSeries);
+
+                LoggingService.Instance.LogInfo($"已添加標籤 {tag.TagName} 的圖表系列，資料點數: {sampledData.Count}", "MainWindow");
             }
-
-            // 根據採樣係數縮減數據
-            var sampledData = SampleData(data, _samplingFactor);
-
-            // 創建數據系列
-            var dataSeries = new XyDataSeries<DateTime, double> { SeriesName = tag.TagNo };
-
-            // 添加數據點
-            foreach (var point in sampledData)
+            catch (Exception ex)
             {
-                dataSeries.Append(point.DateTime, point.Value);
+                LoggingService.Instance.LogError($"添加標籤 {tag.TagName} 的圖表系列失敗", ex, "MainWindow");
             }
-
-            // 存儲數據系列
-            _dataSeries[tag.Index] = dataSeries;
-
-            // 獲取顏色索引
-            int colorIndex = _renderableSeries.Count % AppConfig.ChartColors.Count;
-            var seriesColor = AppConfig.ChartColors[colorIndex];
-
-            // 創建 FastLineRenderableSeries
-            var lineSeries = new FastLineRenderableSeries
-            {
-                DataSeries = dataSeries,
-                Stroke = seriesColor.ToSciChartColor(), // 這裡實際上只是返回原始的seriesColor
-                StrokeThickness = 2,
-                AntiAliasing = true
-            };
-
-            // 設置點標記
-            var pointMarker = new EllipsePointMarker
-            {
-                Width = 5,
-                Height = 5,
-                Fill = seriesColor.ToSciChartColor(),
-                Stroke = seriesColor.ToSciChartColor()
-            };
-            lineSeries.PointMarker = pointMarker;
-
-            // 添加到渲染系列集合
-            _renderableSeries.Add(lineSeries);
-
-            // 添加到SciChart
-            _sciChartSurface.RenderableSeries.Add(lineSeries);
-        }
-
-        /// <summary>
-        /// 對數據進行採樣以減少點數
-        /// </summary>
-        private List<TrendDataPoint> SampleData(List<TrendDataPoint> data, int factor)
-        {
-            if (factor <= 1 || data.Count <= 100)
-            {
-                return data; // 如果係數小於等於1或資料點少於100個，則不採樣
-            }
-
-            var result = new List<TrendDataPoint>();
-
-            // 始終包含第一個和最後一個點
-            if (data.Count > 0)
-                result.Add(data[0]);
-
-            // 添加採樣點
-            for (int i = 1; i < data.Count - 1; i += factor)
-            {
-                result.Add(data[i]);
-            }
-
-            // 添加最後一個點
-            if (data.Count > 1)
-                result.Add(data[data.Count - 1]);
-
-            return result;
         }
 
         /// <summary>
@@ -864,6 +1018,8 @@ namespace TrendChartApp
 
             // 更新Y軸範圍
             UpdateYAxisRange();
+
+            LoggingService.Instance.LogInfo($"Y軸範圍已自動調整為: {YAxisMin:F2} ~ {YAxisMax:F2}", "MainWindow");
         }
 
         /// <summary>
@@ -883,10 +1039,14 @@ namespace TrendChartApp
             {
                 try
                 {
-                    // 嘗試解析時間字串
-                    if (TimeSpan.TryParse(StartTimeText, out TimeSpan startTime))
+                    // 驗證時間字串
+                    var timeValidation = _validationService.ValidateTimeString(StartTimeText);
+                    if (timeValidation.IsValid)
                     {
-                        StartTime = StartDate.Date.Add(startTime);
+                        if (TimeSpan.TryParse(StartTimeText, out TimeSpan startTime))
+                        {
+                            StartTime = StartDate.Date.Add(startTime);
+                        }
                     }
                 }
                 catch (Exception)
@@ -905,10 +1065,14 @@ namespace TrendChartApp
             {
                 try
                 {
-                    // 嘗試解析時間字串
-                    if (TimeSpan.TryParse(EndTimeText, out TimeSpan endTime))
+                    // 驗證時間字串
+                    var timeValidation = _validationService.ValidateTimeString(EndTimeText);
+                    if (timeValidation.IsValid)
                     {
-                        EndTime = EndDate.Date.Add(endTime);
+                        if (TimeSpan.TryParse(EndTimeText, out TimeSpan endTime))
+                        {
+                            EndTime = EndDate.Date.Add(endTime);
+                        }
                     }
                 }
                 catch (Exception)
@@ -919,7 +1083,7 @@ namespace TrendChartApp
         }
 
         /// <summary>
-        /// 顯示載入覆蓋層
+        /// 顯示載入覆蓋層（已被ProgressService取代，保留向後相容）
         /// </summary>
         private void ShowLoadingOverlay(string message)
         {
@@ -928,7 +1092,7 @@ namespace TrendChartApp
         }
 
         /// <summary>
-        /// 隱藏載入覆蓋層
+        /// 隱藏載入覆蓋層（已被ProgressService取代，保留向後相容）
         /// </summary>
         private void HideLoadingOverlay()
         {
@@ -944,6 +1108,30 @@ namespace TrendChartApp
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        #endregion
+
+        #region 清理資源
+
+        protected override void OnClosed(EventArgs e)
+        {
+            try
+            {
+                // 清理服務資源
+                _cacheService?.Dispose();
+                _zoomTimer?.Stop();
+
+                LoggingService.Instance.LogInfo("應用程式視窗已關閉", "MainWindow");
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Instance.LogError("清理資源時發生錯誤", ex, "MainWindow");
+            }
+            finally
+            {
+                base.OnClosed(e);
+            }
         }
 
         #endregion

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TrendChartApp.Models;
@@ -16,6 +17,14 @@ namespace TrendChartApp.Helpers
         public DatabaseHelper(string connectionString)
         {
             _connectionString = connectionString;
+        }
+
+        /// <summary>
+        /// 同步獲取所有標籤（保持向後相容）
+        /// </summary>
+        public List<TagInfo> GetAllTags()
+        {
+            return GetAllTagsAsync().GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -60,6 +69,67 @@ namespace TrendChartApp.Helpers
             }
 
             return tags;
+        }
+
+        /// <summary>
+        /// 同步獲取標籤數據（保持向後相容）
+        /// </summary>
+        public List<TrendDataPoint> GetTagData(TagInfo tag, DateTime startTime, DateTime endTime)
+        {
+            return GetTagDataAsync(tag, startTime, endTime).GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// 異步獲取標籤數據
+        /// </summary>
+        public async Task<List<TrendDataPoint>> GetTagDataAsync(TagInfo tag, DateTime startTime, DateTime endTime)
+        {
+            var result = new List<TrendDataPoint>();
+
+            await _connectionSemaphore.WaitAsync();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                // 確定表名和列名
+                string tableName = $"Trend{tag.TableNo:D5}Data";
+                string columnName = $"Item{tag.ItemPos:D2}";
+
+                // 創建SQL查詢
+                string query = $@"SELECT DateTime, {columnName} FROM {tableName} 
+                                 WHERE DateTime BETWEEN @StartTime AND @EndTime 
+                                 ORDER BY DateTime";
+
+                using var command = new SqlCommand(query, connection);
+                command.Parameters.Add("@StartTime", SqlDbType.DateTime2).Value = startTime;
+                command.Parameters.Add("@EndTime", SqlDbType.DateTime2).Value = endTime;
+                command.CommandTimeout = 60;
+
+                using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    if (!reader.IsDBNull(columnName))
+                    {
+                        result.Add(new TrendDataPoint
+                        {
+                            DateTime = reader.GetDateTime("DateTime"),
+                            Value = Math.Round(reader.GetDouble(columnName), 2)
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // 記錄錯誤但不拋出異常，防止阻塞UI線程
+                Console.WriteLine($"Error fetching tag data: {ex.Message}");
+            }
+            finally
+            {
+                _connectionSemaphore.Release();
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -231,6 +301,14 @@ namespace TrendChartApp.Helpers
             {
                 _connectionSemaphore.Release();
             }
+        }
+
+        /// <summary>
+        /// 檢查表是否存在（同步版本，向後相容）
+        /// </summary>
+        public bool TableExists(string tableName)
+        {
+            return TableExistsAsync(tableName).GetAwaiter().GetResult();
         }
 
         /// <summary>
