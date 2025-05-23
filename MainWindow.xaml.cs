@@ -958,7 +958,8 @@ namespace TrendChartApp
                     DataSeries = dataSeries,
                     Stroke = seriesColor,
                     StrokeThickness = _configService.Settings.Chart.LineThickness,
-                    AntiAliasing = true
+                    AntiAliasing = true,
+                    Tag = tag.Index // 儲存標籤索引以便後續顏色更新
                 };
 
                 // 設置點標記
@@ -969,7 +970,7 @@ namespace TrendChartApp
                     Fill = seriesColor,
                     Stroke = seriesColor
                 };
-                lineSeries.PointMarker = pointMarker;
+                lineSeries.PointMarker = pointMarker;   
 
                 // 添加到渲染系列集合
                 _renderableSeries.Add(lineSeries);

@@ -62,26 +62,12 @@ namespace TrendChartApp.Views
 
                 if (tagColorSetting != null)
                 {
-                    var colorDialog = new System.Windows.Forms.ColorDialog
+                    var colorPicker = new WpfColorPickerWindow(tagColorSetting.CurrentColor);
+                    colorPicker.Owner = this;
+
+                    if (colorPicker.ShowDialog() == true)
                     {
-                        Color = System.Drawing.Color.FromArgb(
-                            tagColorSetting.CurrentColor.A,
-                            tagColorSetting.CurrentColor.R,
-                            tagColorSetting.CurrentColor.G,
-                            tagColorSetting.CurrentColor.B),
-                        FullOpen = true
-                    };
-
-                    if (colorDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                    {
-                        var selectedColor = Color.FromArgb(
-                            colorDialog.Color.A,
-                            colorDialog.Color.R,
-                            colorDialog.Color.G,
-                            colorDialog.Color.B);
-
-                        tagColorSetting.CurrentColor = selectedColor;
-
+                        tagColorSetting.CurrentColor = colorPicker.SelectedColor;
                         LoggingService.Instance.LogInfo($"標籤 {tagColorSetting.TagName} 顏色已更改為自訂顏色", "ColorSettingsWindow");
                     }
                 }
