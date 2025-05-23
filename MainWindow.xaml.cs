@@ -1099,6 +1099,183 @@ namespace TrendChartApp
             loadingOverlay.Visibility = Visibility.Collapsed;
         }
 
+        /// <summary>
+        /// 打開線條顏色設定視窗
+        /// </summary>
+        private void OpenColorSettingsWindow(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (SelectedTags.Count == 0)
+                {
+                    MessageBox.Show("請先選擇標籤後再設定顏色。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var colorSettingsWindow = new Views.ColorSettingsWindow(SelectedTags, _configService);
+                colorSettingsWindow.Owner = this;
+
+                // 訂閱顏色變更事件
+                colorSettingsWindow.ColorChanged += OnColorChanged;
+
+                if (colorSettingsWindow.ShowDialog() == true)
+                {
+                    LoggingService.Instance.LogInfo("顏色設定已完成並儲存", "MainWindow");
+                }
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Instance.LogError("打開顏色設定視窗失敗", ex, "MainWindow");
+                MessageBox.Show($"打開顏色設定視窗時發生錯誤: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 處理顏色變更事件
+        /// </summary>
+        private void OnColorChanged(object sender, Views.ColorChangedEventArgs e)
+        {
+            try
+            {
+                foreach (var colorChange in e.ColorChanges)
+                {
+                    var tagIndex = colorChange.Key;
+                    var newColor = colorChange.Value;
+
+                    // 找到對應的 SciChart 系列並更新顏色
+                    var series = _sciChartSurface.RenderableSeries
+                        .OfType<FastLineRenderableSeries>()
+                        .FirstOrDefault(s => GetTagIndexFromSeries(s) == tagIndex);
+
+                    if (series != null)
+                    {
+                        series.Stroke = newColor;
+
+                        // 同時更新點標記顏色
+                        if (series.PointMarker is EllipsePointMarker marker)
+                        {
+                            marker.Fill = newColor;
+                            marker.Stroke = newColor;
+                        }
+
+                        LoggingService.Instance.LogDebug($"已更新標籤索引 {tagIndex} 的線條顏色", "MainWindow");
+                    }
+                }
+
+                // 強制重新繪製圖表
+                _sciChartSurface?.InvalidateElement();
+
+                LoggingService.Instance.LogInfo($"已更新 {e.ColorChanges.Count} 個系列的顏色", "MainWindow");
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Instance.LogError("更新線條顏色失敗", ex, "MainWindow");
+                MessageBox.Show($"更新線條顏色時發生錯誤: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 從 SciChart 系列中取得標籤索引
+        /// </summary>
+        private int GetTagIndexFromSeries(FastLineRenderableSeries series)
+        {
+            // 從系列名稱或資料系列中取得標籤索引
+            // 這裡需要根據您在 AddSeries 方法中如何設定系列名稱來實作
+
+            // 方法1: 如果您在 AddSeries 中將 TagIndex 儲存在 Tag 屬性中
+            if (series.Tag is int tagIndex)
+            {
+                return tagIndex;
+            }
+
+            // 方法2: 如果您使用 SeriesName 來儲存 TagNo，需要從 SelectedTags 中查找
+            var tagNo = series.DataSeries?.SeriesName;
+            var tag = SelectedTags.FirstOrDefault(t => t.TagNo == tagNo);
+            return tag?.Index ?? -1;
+        }
+
+        /// <summary>
+        /// 更新 AddSeries 方法以支援顏色設定
+        /// </summary>
+        private async Task AddSeries(TagInfo tag, List<TrendDataPoint> data, Color? customColor = null)
+        {
+            try
+            {
+                if (data.Count == 0)
+                {
+                    return;
+                }
+
+                // 驗證數據
+                var validation = _validationService.ValidateTrendData(data, tag.TagName);
+                if (!validation.IsValid)
+                {
+                    LoggingService.Instance.LogWarning($"標籤 {tag.TagName} 的數據驗證失敗: {validation.GetErrorMessage()}", "MainWindow");
+                }
+
+                // 根據採樣係數縮減數據
+                var sampledData = DatabaseHelper.SampleDataIntelligently(data, _configService.Settings.Chart.MaxDataPoints);
+
+                // 創建數據系列
+                var dataSeries = new XyDataSeries<DateTime, double> { SeriesName = tag.TagNo };
+
+                // 添加數據點
+                foreach (var point in sampledData)
+                {
+                    dataSeries.Append(point.DateTime, point.Value);
+                }
+
+                // 存儲數據系列
+                _dataSeries[tag.Index] = dataSeries;
+
+                // 決定使用的顏色
+                Color seriesColor;
+                if (customColor.HasValue)
+                {
+                    seriesColor = customColor.Value;
+                }
+                else
+                {
+                    // 獲取預設顏色
+                    int colorIndex = _renderableSeries.Count % _configService.Settings.Chart.DefaultColors.Count;
+                    var colorString = _configService.Settings.Chart.DefaultColors[colorIndex];
+                    seriesColor = (Color)ColorConverter.ConvertFromString(colorString);
+                }
+
+                // 創建 FastLineRenderableSeries
+                var lineSeries = new FastLineRenderableSeries
+                {
+                    DataSeries = dataSeries,
+                    Stroke = seriesColor,
+                    StrokeThickness = _configService.Settings.Chart.LineThickness,
+                    AntiAliasing = true,
+                    Tag = tag.Index // 儲存標籤索引以便後續顏色更新
+                };
+
+                // 設置點標記
+                var pointMarker = new EllipsePointMarker
+                {
+                    Width = 5,
+                    Height = 5,
+                    Fill = seriesColor,
+                    Stroke = seriesColor
+                };
+                lineSeries.PointMarker = pointMarker;
+
+                // 添加到渲染系列集合
+                _renderableSeries.Add(lineSeries);
+
+                // 添加到SciChart
+                _sciChartSurface.RenderableSeries.Add(lineSeries);
+
+                LoggingService.Instance.LogInfo($"已添加標籤 {tag.TagName} 的圖表系列，資料點數: {sampledData.Count}", "MainWindow");
+            }
+            catch (Exception ex)
+            {
+                LoggingService.Instance.LogError($"添加標籤 {tag.TagName} 的圖表系列失敗", ex, "MainWindow");
+            }
+        }
+
         #endregion
 
         #region INotifyPropertyChanged 實現

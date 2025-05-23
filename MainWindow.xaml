@@ -35,6 +35,7 @@
             </MenuItem>
             <MenuItem Header="Trend Setting">
                 <MenuItem Header="選擇標籤" Click="OpenTagSelectionWindow"/>
+                <MenuItem Header="線條顏色設定" Click="OpenColorSettingsWindow"/>
                 <MenuItem Header="更新趨勢圖" Click="UpdateChart"/>
             </MenuItem>
         </Menu>
